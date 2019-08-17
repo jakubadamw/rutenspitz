@@ -1,13 +1,16 @@
-#[macro_use] extern crate arbitrary_model_tests;
-#[macro_use] extern crate derive_arbitrary;
-#[macro_use] extern crate honggfuzz;
+#[macro_use]
+extern crate arbitrary_model_tests;
+#[macro_use]
+extern crate derive_arbitrary;
+#[macro_use]
+extern crate honggfuzz;
 
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
 
 pub struct ModelBinaryHeap<T>
 where
-    T: Ord
+    T: Ord,
 {
     data: Vec<T>,
 }
@@ -23,21 +26,26 @@ where
     pub fn clear(&mut self) {
         self.data.clear()
     }
-   
+
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    
+
     pub fn len(&self) -> usize {
         self.data.len()
     }
-    
+
     pub fn peek(&self) -> Option<&T> {
         self.data.iter().max()
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        let max = self.data.iter().enumerate().max_by_key(|probe| probe.1).map(|probe| probe.0);
+        let max = self
+            .data
+            .iter()
+            .enumerate()
+            .max_by_key(|probe| probe.1)
+            .map(|probe| probe.0);
         max.map(|idx| self.data.swap_remove(idx))
     }
 
@@ -59,7 +67,7 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
 arbitrary_stateful_operations! {
     model = ModelBinaryHeap<T>,
     tested = BinaryHeap<T>,
-    
+
     type_parameters = <
         T: Clone + Debug + Eq + Ord
     >,
@@ -94,11 +102,10 @@ const MAX_RING_SIZE: usize = 16_384;
 
 fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
-    
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE)
-        .map_err(|_| ())?;
+
+    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
-    
+
     let mut model = ModelBinaryHeap::<u16>::new();
     let mut tested = BinaryHeap::<u16>::with_capacity(capacity as usize);
 
@@ -120,4 +127,3 @@ fn main() -> Result<(), ()> {
         });
     }
 }
-

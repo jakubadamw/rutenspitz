@@ -1,8 +1,11 @@
 #![feature(map_get_key_value)]
 
-#[macro_use] extern crate arbitrary_model_tests;
-#[macro_use] extern crate derive_arbitrary;
-#[macro_use] extern crate honggfuzz;
+#[macro_use]
+extern crate arbitrary_model_tests;
+#[macro_use]
+extern crate derive_arbitrary;
+#[macro_use]
+extern crate honggfuzz;
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -27,19 +30,25 @@ where
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
-        self.data.iter().find(|probe| probe.0 == *k).is_some()    
+        self.data.iter().find(|probe| probe.0 == *k).is_some()
     }
-    
+
     pub fn get(&self, k: &K) -> Option<&V> {
         self.data.iter().find(|probe| probe.0 == *k).map(|e| &e.1)
     }
 
     pub fn get_key_value(&self, k: &K) -> Option<(&K, &V)> {
-        self.data.iter().find(|probe| probe.0 == *k).map(|e| (&e.0, &e.1))
+        self.data
+            .iter()
+            .find(|probe| probe.0 == *k)
+            .map(|e| (&e.0, &e.1))
     }
 
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
-        self.data.iter_mut().find(|probe| probe.0 == *k).map(|e| &mut e.1)
+        self.data
+            .iter_mut()
+            .find(|probe| probe.0 == *k)
+            .map(|e| &mut e.1)
     }
 
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
@@ -50,15 +59,15 @@ where
             None
         }
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-    
+
     pub fn len(&self) -> usize {
         self.data.len()
     }
-    
+
     pub fn remove(&mut self, k: &K) -> Option<V> {
         let pos = self.data.iter().position(|probe| probe.0 == *k);
         pos.map(|idx| self.data.swap_remove(idx).1)
@@ -71,7 +80,7 @@ where
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut V)> {
         self.data.iter_mut().map(|e| (&e.0, &mut e.1))
     }
-    
+
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.data.iter().map(|e| &e.0)
     }
@@ -117,7 +126,7 @@ fn sort_iterable<T: Ord, I: IntoIterator<Item = T>>(i: I) -> Vec<T> {
 arbitrary_stateful_operations! {
     model = ModelBTreeMap<K, V>,
     tested = BTreeMap<K, V>,
-    
+
     type_parameters = <
         K: Clone + Debug + Eq + Ord,
         V: Clone + Debug + Eq + Ord
@@ -145,7 +154,7 @@ arbitrary_stateful_operations! {
             fn values(&self) -> impl Iterator<Item = &V>;
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
-    
+
         equal_with(sort_iterable) {
             fn split_off(&mut self, k: &K) -> impl IntoIterator<Item = (&K, &V)>;
         }
@@ -156,7 +165,7 @@ const MAX_RING_SIZE: usize = 16_384;
 
 fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
-    
+
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
     let mut model = ModelBTreeMap::<u16, u16>::new();
     let mut tested = BTreeMap::<u16, u16>::new();
@@ -179,4 +188,3 @@ fn main() -> Result<(), ()> {
         });
     }
 }
-

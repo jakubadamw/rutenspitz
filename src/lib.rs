@@ -1,5 +1,6 @@
 extern crate either;
-#[macro_use] extern crate quote;
+#[macro_use]
+extern crate quote;
 extern crate proc_macro;
 extern crate syn;
 
@@ -21,13 +22,13 @@ mod kw {
 enum PassingMode {
     ByValue,
     ByRef,
-    ByRefMut
+    ByRefMut,
 }
 
 struct Argument {
     name: syn::Ident,
     ty: syn::Type,
-    passing_mode: PassingMode
+    passing_mode: PassingMode,
 }
 
 struct Method {
@@ -41,52 +42,58 @@ struct Method {
 impl syn::parse::Parse for Method {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let method_item: syn::TraitItemMethod = input.parse()?;
-        
+
         if let Some(ref defaultness) = method_item.default {
             return Err(syn::Error::new(defaultness.span(), "unexpected `default`"));
         }
-        if let Some(ref constness) = method_item.sig.constness {      
+        if let Some(ref constness) = method_item.sig.constness {
             return Err(syn::Error::new(constness.span(), "unexpected `const`"));
         }
-        if let Some(ref asyncness) = method_item.sig.asyncness {      
+        if let Some(ref asyncness) = method_item.sig.asyncness {
             return Err(syn::Error::new(asyncness.span(), "unexpected `async`"));
         }
-        if let Some(ref unsafety) = method_item.sig.unsafety {      
+        if let Some(ref unsafety) = method_item.sig.unsafety {
             return Err(syn::Error::new(unsafety.span(), "unexpected `unsafe`"));
         }
 
-        let (receivers, args) = method_item.sig.inputs.iter().map(|input| match input {
-            syn::FnArg::Receiver(receiver) =>
-                Either::Left(receiver),
-            syn::FnArg::Typed(syn::PatType { ty, pat, .. }) => {
-                let ident = match **pat {
-                    syn::Pat::Ident(syn::PatIdent { ref ident, .. }) => ident.clone(),
-                    ref pat => {
-                        //error_stream.extend(
-                        //    syn::Error::new(pat.span(), "unexpected `unsafe`").to_compile_error());
-                        syn::Ident::new("_", pat.span())
-                    }
-                };
-                match **ty {
-                    syn::Type::Reference(syn::TypeReference { ref mutability, ref elem, .. }) =>
-                        Either::Right(Argument {
+        let (receivers, args) = method_item
+            .sig
+            .inputs
+            .iter()
+            .map(|input| match input {
+                syn::FnArg::Receiver(receiver) => Either::Left(receiver),
+                syn::FnArg::Typed(syn::PatType { ty, pat, .. }) => {
+                    let ident = match **pat {
+                        syn::Pat::Ident(syn::PatIdent { ref ident, .. }) => ident.clone(),
+                        ref pat => {
+                            //error_stream.extend(
+                            //    syn::Error::new(pat.span(), "unexpected `unsafe`").to_compile_error());
+                            syn::Ident::new("_", pat.span())
+                        }
+                    };
+                    match **ty {
+                        syn::Type::Reference(syn::TypeReference {
+                            ref mutability,
+                            ref elem,
+                            ..
+                        }) => Either::Right(Argument {
                             name: ident,
                             ty: (**elem).clone(),
                             passing_mode: if mutability.is_some() {
                                 PassingMode::ByRefMut
                             } else {
                                 PassingMode::ByRef
-                            }
+                            },
                         }),
-                    ref ty =>
-                        Either::Right(Argument {
+                        ref ty => Either::Right(Argument {
                             name: ident,
                             ty: ty.clone(),
-                            passing_mode: PassingMode::ByValue
-                        })
-                }       
-            }
-        }).partition::<Vec<_>, _>(Either::is_left);
+                            passing_mode: PassingMode::ByValue,
+                        }),
+                    }
+                }
+            })
+            .partition::<Vec<_>, _>(Either::is_left);
 
         let receivers: Vec<_> = receivers.into_iter().filter_map(Either::left).collect();
         let args: Vec<_> = args.into_iter().filter_map(Either::right).collect();
@@ -95,11 +102,17 @@ impl syn::parse::Parse for Method {
         match receiver {
             Some(receiver) => {
                 if receiver.reference.is_none() {
-                    return Err(syn::Error::new(receiver.span(), "unexpected by-value receiver"));
+                    return Err(syn::Error::new(
+                        receiver.span(),
+                        "unexpected by-value receiver",
+                    ));
                 }
             }
             None => {
-                return Err(syn::Error::new(method_item.span(), "unexpected method with no receiver"));
+                return Err(syn::Error::new(
+                    method_item.span(),
+                    "unexpected method with no receiver",
+                ));
             }
         }
 
@@ -122,7 +135,7 @@ struct Specification {
     model: syn::Path,
     tested: syn::Path,
     type_params: Vec<syn::TypeParam>,
-    methods: Vec<Method> 
+    methods: Vec<Method>,
 }
 
 impl syn::parse::Parse for Specification {
@@ -148,7 +161,7 @@ impl syn::parse::Parse for Specification {
         let mut methods: Vec<Method> = vec![];
         let outer;
         let mut inner;
-        
+
         let _: kw::methods = input.parse()?;
         braced!(outer in input);
 
@@ -178,7 +191,7 @@ impl syn::parse::Parse for Specification {
             model: model,
             tested: tested,
             type_params: type_params,
-            methods: methods
+            methods: methods,
         })
     }
 }
@@ -186,10 +199,10 @@ impl syn::parse::Parse for Specification {
 impl quote::ToTokens for Method {
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
         use pm2::{Delimiter, Group, Punct, Spacing};
-        use quote::{TokenStreamExt};
+        use quote::TokenStreamExt;
 
         tokens.append(self.name.clone());
-        
+
         if !self.inputs.is_empty() {
             let mut fields = pm2::TokenStream::new();
             for input in self.inputs.iter() {
@@ -204,25 +217,27 @@ impl quote::ToTokens for Method {
 }
 
 struct MethodTest<'s> {
-    method: &'s Method
+    method: &'s Method,
 }
 
 impl<'s> quote::ToTokens for MethodTest<'s> {
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        let args: Vec<_> = self.method.inputs.iter().map(|input| {
-            let input_name = &input.name;
-            match input.passing_mode {
-                PassingMode::ByValue =>
-                    quote! { #input_name.clone() },
-                PassingMode::ByRef =>
-                    quote! { &#input_name },
-                PassingMode::ByRefMut =>
-                    quote! { &mut #input_name }
-            }
-        }).collect();
-       
+        let args: Vec<_> = self
+            .method
+            .inputs
+            .iter()
+            .map(|input| {
+                let input_name = &input.name;
+                match input.passing_mode {
+                    PassingMode::ByValue => quote! { #input_name.clone() },
+                    PassingMode::ByRef => quote! { &#input_name },
+                    PassingMode::ByRefMut => quote! { &mut #input_name },
+                }
+            })
+            .collect();
+
         let method_name = &self.method.name;
-       
+
         let keys: Vec<_> = self.method.inputs.iter().map(|input| &input.name).collect();
         let pattern = if keys.is_empty() {
             quote! { Op::#method_name }
@@ -230,14 +245,18 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             quote! { Op::#method_name { #(#keys),* } }
         };
 
-        let process_model_res = self.method.process_result
+        let process_model_res = self
+            .method
+            .process_result
             .as_ref()
             .map(|p| quote! { #p(model_res) })
-            .unwrap_or(quote!{ model_res });
-        let process_tested_res = self.method.process_result
+            .unwrap_or(quote! { model_res });
+        let process_tested_res = self
+            .method
+            .process_result
             .as_ref()
             .map(|p| quote! { #p(tested_res) })
-            .unwrap_or(quote!{ tested_res });
+            .unwrap_or(quote! { tested_res });
 
         tokens.extend(quote! {
             #pattern => {
@@ -252,7 +271,7 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
 }
 
 struct OperationEnum<'s> {
-    spec: &'s Specification
+    spec: &'s Specification,
 }
 
 impl<'s> quote::ToTokens for OperationEnum<'s> {
@@ -267,32 +286,42 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
         let tested = &self.spec.tested;
         let variants = &self.spec.methods;
 
-        let method_tests: Vec<_> = self.spec.methods.iter().map(|method| {
-            MethodTest { method: method }
-        }).collect();
+        let method_tests: Vec<_> = self
+            .spec
+            .methods
+            .iter()
+            .map(|method| MethodTest { method: method })
+            .collect();
 
-        let format_calls: Vec<_> = self.spec.methods.iter().map(|method| {
-            let args: Vec<_> = method.inputs.iter().map(|input| {
-                match input.passing_mode {
-                    PassingMode::ByValue => "{:?}",
-                    PassingMode::ByRef => "&{:?}",
-                    PassingMode::ByRefMut => "&mut {:?}"
+        let format_calls: Vec<_> = self
+            .spec
+            .methods
+            .iter()
+            .map(|method| {
+                let args: Vec<_> = method
+                    .inputs
+                    .iter()
+                    .map(|input| match input.passing_mode {
+                        PassingMode::ByValue => "{:?}",
+                        PassingMode::ByRef => "&{:?}",
+                        PassingMode::ByRefMut => "&mut {:?}",
+                    })
+                    .collect();
+
+                let method_name = &method.name;
+                let format_str = format!("v.{}({});", method_name, args.join(", "));
+                let keys: Vec<_> = method.inputs.iter().map(|input| &input.name).collect();
+                let pattern = if keys.is_empty() {
+                    quote! { Op::#method_name }
+                } else {
+                    quote! { Op::#method_name { #(#keys),* } }
+                };
+
+                quote! { #pattern =>
+                    write!(f, #format_str, #(#keys),*)
                 }
-            }).collect();
-
-            let method_name = &method.name;
-            let format_str = format!("v.{}({});", method_name, args.join(", "));
-            let keys: Vec<_> = method.inputs.iter().map(|input| &input.name).collect();
-            let pattern = if keys.is_empty() {
-                quote! { Op::#method_name }
-            } else {
-                quote! { Op::#method_name { #(#keys),* } }
-            };
-
-            quote! { #pattern =>
-                write!(f, #format_str, #(#keys),*)
-            }
-        }).collect();
+            })
+            .collect();
 
         tokens.extend(quote! {
             #[allow(non_camel_case_types)]
@@ -312,7 +341,7 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             impl<#(#type_params_with_bounds),*> Op<#(#type_params),*> {
                 pub fn execute(self, model: &mut #model, tested: &mut #tested) {
                     match self {
-                        #(#method_tests),* 
+                        #(#method_tests),*
                     }
                 }
             }
@@ -324,9 +353,7 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
 pub fn arbitrary_stateful_operations(input: pm::TokenStream) -> pm::TokenStream {
     let parsed_spec = parse_macro_input!(input as Specification);
 
-    let operation_enum = OperationEnum {
-        spec: &parsed_spec
-    };
+    let operation_enum = OperationEnum { spec: &parsed_spec };
 
     let output = quote! {
         mod op {
@@ -334,7 +361,6 @@ pub fn arbitrary_stateful_operations(input: pm::TokenStream) -> pm::TokenStream 
             #operation_enum
         }
     };
-    
+
     output.into()
 }
-
