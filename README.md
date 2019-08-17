@@ -4,9 +4,9 @@ This is an attempt at creating a convenient procedural macro to be used for test
 
 This crate was inspired by the following work:
 
-[https://github.com/blt/bughunt-rust](bughunt-rust)
-[https://github.com/rust-fuzz/cargo-fuzz](cargo-fuzz)
-[https://github.com/rust-fuzz/honggfuzz-rs](honggfuzz-rs)
+* [https://github.com/blt/bughunt-rust](bughunt-rust)
+* [https://github.com/rust-fuzz/cargo-fuzz](cargo-fuzz)
+* [https://github.com/rust-fuzz/honggfuzz-rs](honggfuzz-rs)
 
 ## Example
 
