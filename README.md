@@ -1,6 +1,6 @@
 # arbitrary-model-tests
 
-This is an attempt at creating a convenient procedural macro to be used for testing stateful models (in particular, various kinds of data structures) against a trivial (but usually very inefficient) implementation that is semantically 100% equivalent and *obviously* correct at the same time. The purpose of the macro is to generate the inner loop logic so that the definition of a model test for a given stateful structure becomes as succinct as possible.
+This is an attempt at creating a convenient procedural macro to be used for testing stateful models (in particular, various kinds of data structures) against a trivial (but usually very inefficient) implementation that is semantically 100% equivalent to the target implementation but, in contrast, *obviously* correct. The purpose of the macro is to generate the boilerplate code for testing particular operations of the model so that the user-provided definition of the test for a given stateful structure becomes as succinct as possible.
 
 This crate was inspired by the following work:
 
@@ -9,6 +9,16 @@ This crate was inspired by the following work:
 * [https://github.com/rust-fuzz/honggfuzz-rs](honggfuzz-rs)
 
 ## Example
+
+See the [`HashMap` test](src/tests/hash_map.rs) for reference.
+
+You can run it with `cargo hfuzz`. You'll first need to install `honggfuzz` along with its system dependencies. See [https://github.com/rust-fuzz/honggfuzz-rs#dependencies](this section) for more details. When you're done, this is all it takes to run the test:
+
+```
+cargo hfuzz run hash_map
+```
+
+## DSL
 
 This is the initial take at a DSL that describes the stateful model to be tested (`std::collections::HashMap` in this case).
 

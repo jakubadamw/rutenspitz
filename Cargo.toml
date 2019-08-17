@@ -6,7 +6,7 @@ edition = "2018"
 
 [[bin]]
 name = "hash_map"
-path = "src/hash_map/main.rs"
+path = "src/tests/hash_map.rs"
 
 [lib]
 proc-macro = true
@@ -20,4 +20,3 @@ honggfuzz = "0.5"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["full"] }
-
