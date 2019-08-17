@@ -79,7 +79,7 @@ arbitrary_stateful_operations! {
     }
 }
 
-const MAX_RING_SIZE: usize = 16_384;
+const MAX_RING_SIZE: usize = 65_536;
 
 fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};

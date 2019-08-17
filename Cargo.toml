@@ -17,6 +17,10 @@ name = "hash_map"
 path = "src/tests/hash_map.rs"
 
 [[bin]]
+name = "index_map"
+path = "src/tests/index_map.rs"
+
+[[bin]]
 name = "linked_hash_map"
 path = "src/tests/linked_hash_map.rs"
 
@@ -33,6 +37,7 @@ better-panic = "0.1"
 derive_arbitrary = "0.2"
 either = "1.5"
 honggfuzz = "0.5"
+indexmap = "1.0"
 linked-hash-map = "0.5"
 proc-macro2 = "1.0"
 quote = "1.0"

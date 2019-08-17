@@ -7,7 +7,7 @@ extern crate derive_arbitrary;
 #[macro_use]
 extern crate honggfuzz;
 
-use linked_hash_map::LinkedHashMap;
+use indexmap::IndexMap;
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -39,6 +39,30 @@ where
         self.data.iter().find(|probe| probe.0 == *k).map(|e| &e.1)
     }
 
+    pub fn get_full(&self, k: &K) -> Option<(usize, &K, &V)> {
+        self.data
+            .iter()
+            .enumerate()
+            .find(|(_, probe)| probe.0 == *k)
+            .map(|(i, e)| (i, &e.0, &e.1))
+    }
+
+    pub fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)> {
+        self.data
+            .iter_mut()
+            .enumerate()
+            .find(|(_, probe)| probe.0 == *k)
+            .map(|(i, e)| (i, &e.0, &mut e.1))
+    }
+
+    pub fn get_index(&self, index: usize) -> Option<(&K, &V)> {
+        self.data.get(index).map(|el| (&el.0, &el.1))
+    }
+
+    pub fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)> {
+        self.data.get_mut(index).map(|el| (&mut el.0, &mut el.1))
+    }
+
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
         self.data
             .iter_mut()
@@ -47,9 +71,12 @@ where
     }
 
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let old_value = self.remove(&k);
-        self.data.push((k, v));
-        old_value
+        if let Some(e) = self.data.iter_mut().find(|probe| probe.0 == k) {
+            Some(std::mem::replace(&mut e.1, v))
+        } else {
+            self.data.push((k, v));
+            None
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -60,15 +87,29 @@ where
         self.data.len()
     }
 
+    pub fn pop(&mut self) -> Option<(K, V)> {
+        self.data.pop()
+    }
+
+    pub fn swap_remove(&mut self, key: &K) -> Option<(V)> {
+        self.swap_remove_full(key).map(|(_, _, v)| v)
+    }
+
+    pub fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)> {
+        let pos = self.data.iter().position(|probe| probe.0 == *key);
+        pos.map(|idx| (idx, self.data.swap_remove(idx)))
+            .map(|(idx, (k, v))| (idx, k, v))
+    }
+
+    pub fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)> {
+        if index >= self.data.len() {
+            return None;
+        }
+        Some(self.data.swap_remove(index))
+    }
+
     pub fn remove(&mut self, k: &K) -> Option<V> {
-        let pos = self.data.iter().position(|probe| probe.0 == *k);
-        pos.map(|idx| {
-            let mut rest = self.data.split_off(idx);
-            let mut it = rest.drain(..);
-            let el = it.next().unwrap().1;
-            self.data.extend(it);
-            el
-        })
+        self.swap_remove(k)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
@@ -86,15 +127,21 @@ where
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.data.iter().map(|e| &e.1)
     }
+
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+        self.data.iter_mut().map(|e| &mut e.1)
+    }
 }
 
-fn collect_iterator<T, I: Iterator<Item = T>>(i: I) -> Vec<T> {
-    i.collect()
+fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
+    let mut v: Vec<_> = i.collect::<Vec<_>>();
+    v.sort();
+    v
 }
 
 arbitrary_stateful_operations! {
     model = ModelHashMap<K, V>,
-    tested = LinkedHashMap<K, V>,
+    tested = IndexMap<K, V>,
 
     type_parameters = <
         K: Clone + Debug + Eq + Hash + Ord,
@@ -106,18 +153,27 @@ arbitrary_stateful_operations! {
             fn clear(&mut self);
             fn contains_key(&self, k: &K) -> bool;
             fn get(&self, k: &K) -> Option<&V>;
+            fn get_full(&self, k: &K) -> Option<(usize, &K, &V)>;
+            fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)>;
+            fn get_index(&self, index: usize) -> Option<(&K, &V)>;
+            fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
             fn is_empty(&self) -> bool;
             fn len(&self) -> usize;
+            fn pop(&mut self) -> Option<(K, V)>;
             fn remove(&mut self, k: &K) -> Option<V>;
+            fn swap_remove(&mut self, key: &K) -> Option<V>;
+            fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)>;
+            fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)>;
         }
 
-        equal_with(collect_iterator) {
+        equal_with(sort_iterator) {
             fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
             fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
             fn keys(&self) -> impl Iterator<Item = &K>;
             fn values(&self) -> impl Iterator<Item = &V>;
+            fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
     }
 }
@@ -131,19 +187,11 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelHashMap::<u16, u16>::new();
-    let mut tested = LinkedHashMap::<u16, u16>::with_capacity(capacity as usize);
+    let mut tested = IndexMap::<u16, u16>::with_capacity(capacity as usize);
 
     let mut op_trace = vec![];
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
         op_trace.push(op.clone());
-        println!(
-            "{}",
-            op_trace
-                .iter()
-                .map(|op| op.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        );
         op.execute(&mut model, &mut tested);
     }
 
