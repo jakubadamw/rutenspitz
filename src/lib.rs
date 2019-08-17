@@ -148,25 +148,30 @@ impl syn::parse::Parse for Specification {
         let mut methods: Vec<Method> = vec![];
         let outer;
         let mut inner;
-        let path;
         
         let _: kw::methods = input.parse()?;
         braced!(outer in input);
-       
-        let _: kw::equal = outer.parse()?;
-        braced!(inner in outer);
-        while !inner.is_empty() {
-            methods.push(inner.parse()?);
-        }
 
-        let _: kw::equal_with = outer.parse()?;
-        parenthesized!(path in outer);
-        let processor: syn::Path = path.parse()?;
-        braced!(inner in outer);
-        while !inner.is_empty() {
-            let mut method: Method = inner.parse()?;
-            method.process_result = Some(processor.clone());
-            methods.push(method);
+        while !outer.is_empty() {
+            let lookahead = outer.lookahead1();
+            let process = if lookahead.peek(kw::equal) {
+                let _: kw::equal = outer.parse()?;
+                None
+            } else if lookahead.peek(kw::equal_with) {
+                let _: kw::equal_with = outer.parse()?;
+                let path;
+                parenthesized!(path in outer);
+                Some(path.parse()?)
+            } else {
+                return Err(lookahead.error());
+            };
+
+            braced!(inner in outer);
+            while !inner.is_empty() {
+                let mut method: Method = inner.parse()?;
+                method.process_result = process.clone();
+                methods.push(method);
+            }
         }
 
         Ok(Self {
@@ -266,11 +271,42 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             MethodTest { method: method }
         }).collect();
 
+        let format_calls: Vec<_> = self.spec.methods.iter().map(|method| {
+            let args: Vec<_> = method.inputs.iter().map(|input| {
+                match input.passing_mode {
+                    PassingMode::ByValue => "{:?}",
+                    PassingMode::ByRef => "&{:?}",
+                    PassingMode::ByRefMut => "&mut {:?}"
+                }
+            }).collect();
+
+            let method_name = &method.name;
+            let format_str = format!("v.{}({});", method_name, args.join(", "));
+            let keys: Vec<_> = method.inputs.iter().map(|input| &input.name).collect();
+            let pattern = if keys.is_empty() {
+                quote! { Op::#method_name }
+            } else {
+                quote! { Op::#method_name { #(#keys),* } }
+            };
+
+            quote! { #pattern =>
+                write!(f, #format_str, #(#keys),*)
+            }
+        }).collect();
+
         tokens.extend(quote! {
             #[allow(non_camel_case_types)]
             #[derive(Arbitrary, Clone, Debug)]
             pub enum Op<#(#type_params_with_bounds),*> {
                 #(#variants),*
+            }
+
+            impl<#(#type_params_with_bounds),*> std::fmt::Display for Op<#(#type_params),*> {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    match self {
+                        #(#format_calls),*
+                    }
+                }
             }
 
             impl<#(#type_params_with_bounds),*> Op<#(#type_params),*> {

@@ -5,6 +5,14 @@ authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
 edition = "2018"
 
 [[bin]]
+name = "binary_heap"
+path = "src/tests/binary_heap.rs"
+
+[[bin]]
+name = "btree_map"
+path = "src/tests/btree_map.rs"
+
+[[bin]]
 name = "hash_map"
 path = "src/tests/hash_map.rs"
 
@@ -12,7 +20,7 @@ path = "src/tests/hash_map.rs"
 proc-macro = true
 
 [dependencies]
-arbitrary = "0.2"
+arbitrary = { git = "https://github.com/jakubadamw/rust_arbitrary.git" }
 better-panic = "0.1"
 derive_arbitrary = "0.2"
 either = "1.5"

@@ -4,20 +4,19 @@
 #[macro_use] extern crate derive_arbitrary;
 #[macro_use] extern crate honggfuzz;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::hash::Hash;
 
-pub struct ModelHashMap<K, V>
+pub struct ModelBTreeMap<K, V>
 where
-    K: Eq + Hash,
+    K: Eq + Ord,
 {
     data: Vec<(K, V)>,
 }
 
-impl<K, V> ModelHashMap<K, V>
+impl<K, V> ModelBTreeMap<K, V>
 where
-    K: Eq + Hash,
+    K: Eq + Ord,
 {
     pub fn new() -> Self {
         Self { data: Vec::new() }
@@ -65,10 +64,6 @@ where
         pos.map(|idx| self.data.swap_remove(idx).1)
     }
 
-    pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
-        self.data.drain(..)
-    }
-    
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.data.iter().map(|e| (&e.0, &e.1))
     }
@@ -80,7 +75,24 @@ where
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.data.iter().map(|e| &e.0)
     }
-    
+
+    pub fn range(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)> {
+        self.range_mut(range).map(|e| (&*e.0, &*e.1))
+    }
+
+    pub fn range_mut(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)> {
+        self.data
+            .iter_mut()
+            .filter(move |e| e.0 >= range.start && e.0 < range.end)
+            .map(|e| (&e.0, &mut e.1))
+    }
+
+    pub fn split_off(&mut self, key: &K) -> impl IntoIterator<Item = (K, V)> {
+        let (a, b) = self.data.drain(..).partition(|probe| probe.0 < *key);
+        self.data = a;
+        b
+    }
+
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.data.iter().map(|e| &e.1)
     }
@@ -96,12 +108,18 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
     v
 }
 
+fn sort_iterable<T: Ord, I: IntoIterator<Item = T>>(i: I) -> Vec<T> {
+    let mut v: Vec<_> = i.into_iter().collect::<Vec<_>>();
+    v.sort();
+    v
+}
+
 arbitrary_stateful_operations! {
-    model = ModelHashMap<K, V>,
-    tested = HashMap<K, V>,
+    model = ModelBTreeMap<K, V>,
+    tested = BTreeMap<K, V>,
     
     type_parameters = <
-        K: Clone + Debug + Eq + Hash + Ord,
+        K: Clone + Debug + Eq + Ord,
         V: Clone + Debug + Eq + Ord
     >,
 
@@ -119,12 +137,17 @@ arbitrary_stateful_operations! {
         }
 
         equal_with(sort_iterator) {
-            fn drain(&mut self) -> impl Iterator<Item = (K, V)>;
             fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
             fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
             fn keys(&self) -> impl Iterator<Item = &K>;
+            fn range(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)>;
+            fn range_mut(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)>;
             fn values(&self) -> impl Iterator<Item = &V>;
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
+        }
+    
+        equal_with(sort_iterable) {
+            fn split_off(&mut self, k: &K) -> impl IntoIterator<Item = (&K, &V)>;
         }
     }
 }
@@ -134,12 +157,9 @@ const MAX_RING_SIZE: usize = 16_384;
 fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
     
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE)
-        .map_err(|_| ())?;
-    let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
-    
-    let mut model = ModelHashMap::<u16, u16>::new();
-    let mut tested = HashMap::<u16, u16>::with_capacity(capacity as usize);
+    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
+    let mut model = ModelBTreeMap::<u16, u16>::new();
+    let mut tested = BTreeMap::<u16, u16>::new();
 
     let mut op_trace = vec![];
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
