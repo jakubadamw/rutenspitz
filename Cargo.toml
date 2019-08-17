@@ -1,0 +1,23 @@
+[package]
+name = "arbitrary-model-tests"
+version = "0.1.0"
+authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "hash_map"
+path = "src/hash_map/main.rs"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+arbitrary = "0.2"
+better-panic = "0.1"
+derive_arbitrary = "0.2"
+either = "1.5"
+honggfuzz = "0.5"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
+
