@@ -79,21 +79,10 @@ arbitrary_stateful_operations! {
             fn len(&self) -> usize;
             fn peek(&self) -> Option<&T>;
             fn push(&mut self, item: T);
-            /*fn contains_key(&self, k: &K) -> bool;
-            fn get(&self, k: &K) -> Option<&V>;
-            fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
-            fn get_mut(&mut self, k: &K) -> Option<&mut V>;
-            fn insert(&mut self, k: K, v: V) -> Option<V>;
-            fn remove(&mut self, k: &K) -> Option<V>;*/
         }
 
         equal_with(sort_iterator) {
             fn drain(&mut self) -> impl Iterator<Item = T>;
-            /*fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
-            fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
-            fn keys(&self) -> impl Iterator<Item = &K>;
-            fn values(&self) -> impl Iterator<Item = &V>;
-            fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;*/
         }
     }
 }
