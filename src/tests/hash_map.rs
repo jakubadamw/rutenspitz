@@ -23,6 +23,7 @@ impl BuildAHasher {
 
 impl BuildHasher for BuildAHasher {
     type Hasher = ahash::AHasher;
+
     fn build_hasher(&self) -> Self::Hasher {
         ahash::AHasher::new_with_key(self.seed)
     }
@@ -182,14 +183,13 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelHashMap::<u16, u16>::new();
-    let mut tested: HashMap<u16, u16, BuildAHasher> = HashMap::with_capacity_and_hasher(
-        capacity as usize,
-        BuildAHasher::new(hash_seed),
-    );
+    let mut tested: HashMap<u16, u16, BuildAHasher> =
+        HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        #[cfg(fuzzing_debug)] _op_trace.push_str(&format!("{}\n", op.to_string()));
+        #[cfg(fuzzing_debug)]
+        _op_trace.push_str(&format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

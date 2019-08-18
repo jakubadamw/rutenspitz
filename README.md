@@ -25,8 +25,8 @@ This is the initial take at a DSL that describes the stateful model to be tested
 ```rust
 arbitrary_stateful_operations! {
     model = ModelHashMap<K, V>,
-    tested = HashMap<K, V>,
-    
+    tested = HashMap<K, V, BuildAHasher>,
+
     type_parameters = <
         K: Clone + Debug + Eq + Hash + Ord,
         V: Clone + Debug + Eq + Ord
@@ -40,8 +40,9 @@ arbitrary_stateful_operations! {
             fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
-            fn is_empty(&self) -> bool;
-            fn len(&self) -> usize;
+            // Tested as invariants, so no longer needed.
+            // fn is_empty(&self) -> bool;
+            // fn len(&self) -> usize;
             fn remove(&mut self, k: &K) -> Option<V>;
         }
 
@@ -53,6 +54,21 @@ arbitrary_stateful_operations! {
             fn values(&self) -> impl Iterator<Item = &V>;
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
+    }
+
+    pre {
+        let prev_capacity = tested.capacity();
+    }
+
+    post {
+        // A bit of a hack.
+        if &self == &Self::clear {
+            assert_eq!(tested.capacity(), prev_capacity);
+        }
+
+        assert!(tested.capacity() >= model.len());
+        assert_eq!(tested.is_empty(), model.is_empty());
+        assert_eq!(tested.len(), model.len());
     }
 }
 ```
