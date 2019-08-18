@@ -191,7 +191,8 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
+        #[cfg(fuzzing_debug)]
+        _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

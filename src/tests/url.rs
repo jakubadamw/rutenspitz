@@ -18,12 +18,15 @@ impl UrlFix for url::Url {
     fn set_fragment_(&mut self, fragment: &Option<String>) {
         self.set_fragment(fragment.as_ref().map(|s| s.as_str()));
     }
+
     fn set_host_(&mut self, host: &Option<String>) {
         let _ = self.set_host(host.as_ref().map(|s| s.as_str()));
     }
+
     fn set_password_(&mut self, password: &Option<String>) {
         let _ = self.set_password(password.as_ref().map(|s| s.as_str()));
     }
+
     fn set_query_(&mut self, query: &Option<String>) {
         let _ = self.set_query(query.as_ref().map(|s| s.as_str()));
     }
@@ -91,7 +94,8 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op as Arbitrary>::arbitrary(&mut ring) {
-        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
+        #[cfg(fuzzing_debug)]
+        _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute(&mut tested);
     }
 

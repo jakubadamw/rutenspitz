@@ -139,7 +139,7 @@ struct Specification {
     type_params: Vec<syn::TypeParam>,
     methods: Vec<Method>,
     post: Vec<syn::Stmt>,
-    pre: Vec<syn::Stmt>
+    pre: Vec<syn::Stmt>,
 }
 
 impl syn::parse::Parse for Specification {
@@ -220,21 +220,21 @@ impl syn::parse::Parse for Specification {
 
         let model = match model {
             Some(model) => model,
-            None => return Err(input.error("missing `model`"))
+            None => return Err(input.error("missing `model`")),
         };
 
         let tested = match tested {
             Some(tested) => tested,
-            None => return Err(input.error("missing `tested`"))
+            None => return Err(input.error("missing `tested`")),
         };
 
         Ok(Self {
-            model: model,
-            tested: tested,
-            type_params: type_params,
-            methods: methods,
-            post: post,
-            pre: pre
+            model,
+            tested,
+            type_params,
+            methods,
+            post,
+            pre,
         })
     }
 }
@@ -261,7 +261,7 @@ impl quote::ToTokens for Method {
 
 struct MethodTest<'s> {
     method: &'s Method,
-    compare: bool
+    compare: bool,
 }
 
 impl<'s> quote::ToTokens for MethodTest<'s> {
@@ -342,14 +342,20 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             .spec
             .methods
             .iter()
-            .map(|method| MethodTest { method: method, compare: true })
+            .map(|method| MethodTest {
+                method,
+                compare: true,
+            })
             .collect();
 
         let method_tests: Vec<_> = self
             .spec
             .methods
             .iter()
-            .map(|method| MethodTest { method: method, compare: false })
+            .map(|method| MethodTest {
+                method,
+                compare: false,
+            })
             .collect();
 
         let format_calls: Vec<_> = self
