@@ -133,17 +133,9 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut model = ModelHashMap::<u16, u16>::new();
     let mut tested = LinkedHashMap::<u16, u16>::with_capacity(capacity as usize);
 
-    let mut op_trace = vec![];
+    let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        op_trace.push(op.clone());
-        /*println!(
-            "{}",
-            op_trace
-                .iter()
-                .map(|op| op.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        );*/
+        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

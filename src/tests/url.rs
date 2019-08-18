@@ -89,9 +89,9 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
 
     let mut tested = url::Url::parse("https://example.org").unwrap();
 
-    let mut op_trace = vec![];
+    let mut _op_trace = String::new();
     while let Ok(op) = <op::Op as Arbitrary>::arbitrary(&mut ring) {
-        op_trace.push(op.clone());
+        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute(&mut tested);
     }
 

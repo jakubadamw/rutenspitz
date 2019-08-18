@@ -9,8 +9,46 @@ extern crate honggfuzz;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{BuildHasher, Hash, Hasher};
 
+pub struct BuildTrulyAwfulHasher {
+    seed: u8,
+}
+
+impl BuildTrulyAwfulHasher {
+    pub fn new(seed: u8) -> Self {
+        Self { seed }
+    }
+}
+
+impl BuildHasher for BuildTrulyAwfulHasher {
+    type Hasher = TrulyAwfulHasher;
+    fn build_hasher(&self) -> Self::Hasher {
+        TrulyAwfulHasher::new(self.seed)
+    }
+}
+
+pub struct TrulyAwfulHasher {
+    hash_value: u8,
+}
+
+impl TrulyAwfulHasher {
+    fn new(seed: u8) -> Self {
+        Self { hash_value: seed }
+    }
+}
+
+impl Hasher for TrulyAwfulHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        if let Some(byte) = bytes.first() {
+            self.hash_value = self.hash_value.wrapping_add(*byte) % 8;
+        }
+    }
+
+    fn finish(&self) -> u64 {
+        u64::from(self.hash_value)
+    }
+}
 pub struct ModelHashMap<K, V>
 where
     K: Eq + Hash,
@@ -107,7 +145,7 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
 
 arbitrary_stateful_operations! {
     model = ModelHashMap<K, V>,
-    tested = HashMap<K, V>,
+    tested = HashMap<K, V, BuildTrulyAwfulHasher>,
 
     type_parameters = <
         K: Clone + Debug + Eq + Hash + Ord,
@@ -122,8 +160,9 @@ arbitrary_stateful_operations! {
             fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
-            fn is_empty(&self) -> bool;
-            fn len(&self) -> usize;
+            // Tested as invariants, so no longer needed.
+            // fn is_empty(&self) -> bool;
+            // fn len(&self) -> usize;
             fn remove(&mut self, k: &K) -> Option<V>;
         }
 
@@ -136,22 +175,42 @@ arbitrary_stateful_operations! {
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
     }
+
+    pre {
+        let prev_capacity = tested.capacity();
+    }
+
+    post {
+        // A bit of a hack.
+        if &self == &Self::clear {
+            assert_eq!(tested.capacity(), prev_capacity);
+        }
+
+        assert!(tested.capacity() >= model.len());
+        assert_eq!(tested.is_empty(), model.is_empty());
+        assert_eq!(tested.len(), model.len());
+    }
 }
 
-const MAX_RING_SIZE: usize = 65_536;
+const MAX_RING_SIZE: usize = 16_384;
+//const MAX_RING_SIZE: usize = 65_536;
 
 fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
 
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
+    let hash_seed: u8 = Arbitrary::arbitrary(&mut ring)?;
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelHashMap::<u16, u16>::new();
-    let mut tested = HashMap::<u16, u16>::with_capacity(capacity as usize);
+    let mut tested: HashMap<u16, u16, BuildTrulyAwfulHasher> = HashMap::with_capacity_and_hasher(
+        capacity as usize,
+        BuildTrulyAwfulHasher::new(hash_seed),
+    );
 
-    let mut op_trace = vec![];
+    let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        op_trace.push(op.clone());
+        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

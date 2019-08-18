@@ -11,12 +11,14 @@ use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
 mod kw {
-    syn::custom_keyword!(model);
-    syn::custom_keyword!(tested);
-    syn::custom_keyword!(type_parameters);
-    syn::custom_keyword!(methods);
     syn::custom_keyword!(equal);
     syn::custom_keyword!(equal_with);
+    syn::custom_keyword!(methods);
+    syn::custom_keyword!(model);
+    syn::custom_keyword!(post);
+    syn::custom_keyword!(pre);
+    syn::custom_keyword!(tested);
+    syn::custom_keyword!(type_parameters);
 }
 
 enum PassingMode {
@@ -136,62 +138,103 @@ struct Specification {
     tested: syn::Path,
     type_params: Vec<syn::TypeParam>,
     methods: Vec<Method>,
+    post: Vec<syn::Stmt>,
+    pre: Vec<syn::Stmt>
 }
 
 impl syn::parse::Parse for Specification {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         use syn::{braced, parenthesized, Token};
 
-        let _: kw::model = input.parse()?;
-        let _: Token![=] = input.parse()?;
-        let model: syn::Path = input.parse()?;
-        let _: Token![,] = input.parse()?;
-
-        let _: kw::tested = input.parse()?;
-        let _: Token![=] = input.parse()?;
-        let tested: syn::Path = input.parse()?;
-        let _: Token![,] = input.parse()?;
-
-        let _: kw::type_parameters = input.parse()?;
-        let _: Token![=] = input.parse()?;
-        let generics: syn::Generics = input.parse()?;
-        let type_params = generics.type_params().cloned().collect();
-        let _: Token![,] = input.parse()?;
-
+        let mut model: Option<syn::Path> = None;
+        let mut tested: Option<syn::Path> = None;
+        let mut type_params: Vec<syn::TypeParam> = vec![];
         let mut methods: Vec<Method> = vec![];
-        let outer;
-        let mut inner;
+        let mut post: Vec<syn::Stmt> = vec![];
+        let mut pre: Vec<syn::Stmt> = vec![];
 
-        let _: kw::methods = input.parse()?;
-        braced!(outer in input);
+        while !input.is_empty() {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(kw::model) {
+                let _: kw::model = input.parse()?;
+                let _: Token![=] = input.parse()?;
+                model = Some(input.parse()?);
+            } else if lookahead.peek(kw::tested) {
+                let _: kw::tested = input.parse()?;
+                let _: Token![=] = input.parse()?;
+                tested = Some(input.parse()?);
+            } else if lookahead.peek(kw::type_parameters) {
+                let _: kw::type_parameters = input.parse()?;
+                let _: Token![=] = input.parse()?;
+                let generics: syn::Generics = input.parse()?;
+                type_params = generics.type_params().cloned().collect();
+            } else if lookahead.peek(kw::methods) {
+                let outer;
+                let mut inner;
+                let _: kw::methods = input.parse()?;
+                braced!(outer in input);
 
-        while !outer.is_empty() {
-            let lookahead = outer.lookahead1();
-            let process = if lookahead.peek(kw::equal) {
-                let _: kw::equal = outer.parse()?;
-                None
-            } else if lookahead.peek(kw::equal_with) {
-                let _: kw::equal_with = outer.parse()?;
-                let path;
-                parenthesized!(path in outer);
-                Some(path.parse()?)
+                while !outer.is_empty() {
+                    let lookahead = outer.lookahead1();
+                    let process = if lookahead.peek(kw::equal) {
+                        let _: kw::equal = outer.parse()?;
+                        None
+                    } else if lookahead.peek(kw::equal_with) {
+                        let _: kw::equal_with = outer.parse()?;
+                        let path;
+                        parenthesized!(path in outer);
+                        Some(path.parse()?)
+                    } else {
+                        return Err(lookahead.error());
+                    };
+
+                    braced!(inner in outer);
+                    while !inner.is_empty() {
+                        let mut method: Method = inner.parse()?;
+                        method.process_result = process.clone();
+                        methods.push(method);
+                    }
+                }
+            } else if lookahead.peek(kw::post) {
+                let inner;
+                let _: kw::post = input.parse()?;
+                braced!(inner in input);
+                while !inner.is_empty() {
+                    post.push(inner.parse()?);
+                }
+            } else if lookahead.peek(kw::pre) {
+                let inner;
+                let _: kw::pre = input.parse()?;
+                braced!(inner in input);
+                while !inner.is_empty() {
+                    pre.push(inner.parse()?);
+                }
             } else {
                 return Err(lookahead.error());
-            };
+            }
 
-            braced!(inner in outer);
-            while !inner.is_empty() {
-                let mut method: Method = inner.parse()?;
-                method.process_result = process.clone();
-                methods.push(method);
+            if input.peek(Token![,]) {
+                let _: Token![,] = input.parse()?;
             }
         }
+
+        let model = match model {
+            Some(model) => model,
+            None => return Err(input.error("missing `model`"))
+        };
+
+        let tested = match tested {
+            Some(tested) => tested,
+            None => return Err(input.error("missing `tested`"))
+        };
 
         Ok(Self {
             model: model,
             tested: tested,
             type_params: type_params,
             methods: methods,
+            post: post,
+            pre: pre
         })
     }
 }
@@ -231,8 +274,8 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                 let input_name = &input.name;
                 match input.passing_mode {
                     PassingMode::ByValue => quote! { #input_name.clone() },
-                    PassingMode::ByRef => quote! { &#input_name },
-                    PassingMode::ByRefMut => quote! { &mut #input_name },
+                    PassingMode::ByRef => quote! { #input_name },
+                    PassingMode::ByRefMut => quote! { &mut *#input_name },
                 }
             })
             .collect();
@@ -243,7 +286,7 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
         let pattern = if keys.is_empty() {
             quote! { Op::#method_name }
         } else {
-            quote! { Op::#method_name { #(#keys),* } }
+            quote! { Op::#method_name { #(ref #keys),* } }
         };
 
         let process_tested_res = self
@@ -339,9 +382,12 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             })
             .collect();
 
+        let post = &self.spec.post;
+        let pre = &self.spec.pre;
+
         tokens.extend(quote! {
             #[allow(non_camel_case_types)]
-            #[derive(Arbitrary, Clone, Debug)]
+            #[derive(Arbitrary, Clone, Debug, PartialEq)]
             pub enum Op<#(#type_params_with_bounds),*> {
                 #(#variants),*
             }
@@ -356,15 +402,17 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
 
             impl<#(#type_params_with_bounds),*> Op<#(#type_params),*> {
                 pub fn execute(self, tested: &mut #tested) {
-                    match self {
+                    match &self {
                         #(#method_tests),*
                     }
                 }
 
                 pub fn execute_and_compare(self, model: &mut #model, tested: &mut #tested) {
-                    match self {
+                    #(#pre)*
+                    match &self {
                         #(#comp_method_tests),*
                     }
+                    #(#post)*
                 }
             }
         })

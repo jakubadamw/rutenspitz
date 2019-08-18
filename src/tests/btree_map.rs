@@ -170,9 +170,9 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut model = ModelBTreeMap::<u16, u16>::new();
     let mut tested = BTreeMap::<u16, u16>::new();
 
-    let mut op_trace = vec![];
+    let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        op_trace.push(op.clone());
+        #[cfg(fuzzing_debug)] _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 
