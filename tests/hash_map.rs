@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 pub struct BuildAHasher {
     seed: u64,

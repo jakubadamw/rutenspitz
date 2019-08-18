@@ -1,4 +1,5 @@
 #![feature(map_get_key_value)]
+#![feature(shrink_to)]
 
 #[macro_use]
 extern crate arbitrary_model_tests;
@@ -7,7 +8,8 @@ extern crate derive_arbitrary;
 #[macro_use]
 extern crate honggfuzz;
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
+
 use std::fmt::Debug;
 use std::hash::{BuildHasher, Hash};
 
@@ -92,6 +94,14 @@ where
         pos.map(|idx| self.data.swap_remove(idx).1)
     }
 
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.data.shrink_to_fit();
+    }
+
     pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
         self.data.drain(..)
     }
@@ -140,10 +150,9 @@ arbitrary_stateful_operations! {
             fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
-            // Tested as invariants, so no longer needed.
-            // fn is_empty(&self) -> bool;
-            // fn len(&self) -> usize;
             fn remove(&mut self, k: &K) -> Option<V>;
+            fn shrink_to(&mut self, min_capacity: usize);
+            fn shrink_to_fit(&mut self);
         }
 
         equal_with(sort_iterator) {
@@ -163,7 +172,9 @@ arbitrary_stateful_operations! {
     post {
         // A bit of a hack.
         if &self == &Self::clear {
-            assert_eq!(tested.capacity(), prev_capacity);
+            assert_eq!(tested.capacity(), prev_capacity,
+                "capacity: {}, previous: {}",
+                tested.capacity(), prev_capacity);
         }
 
         assert!(tested.capacity() >= model.len());
@@ -179,12 +190,46 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
 
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
-    let hash_seed: u64 = Arbitrary::arbitrary(&mut ring)?;
-    let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelHashMap::<u16, u16>::new();
+
+    let capacity: usize = 28;
+    let hash_seed: u64 = 4774451669087367725;
+
     let mut tested: HashMap<u16, u16, BuildAHasher> =
         HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
+    let items: Vec<(u16, u16)> = vec![
+        (1988, 29987),
+        (2666, 27242),
+        (6040, 2394),
+        (25752, 61248),
+        (27146, 27242),
+        (27241, 27242),
+        (27242, 27242),
+        (27243, 27242),
+        (27285, 27242),
+        (27331, 27242),
+        (28712, 1989),
+        (29517, 57394),
+        (32582, 1480),
+        (34410, 27242),
+        (35690, 26931),
+        (38250, 27242),
+        (39274, 15180),
+        (44843, 27864),
+        (48680, 48830),
+        (56389, 27242),
+        (57394, 52917),
+        (61248, 34543),
+        (61510, 51837),
+        (63016, 47943)
+    ];
+    for (k, v) in items {
+        model.insert(k, v);
+        tested.insert(k, v);
+    }
+    model.remove(&29517);
+    tested.remove(&29517);
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {

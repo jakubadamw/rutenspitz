@@ -37,6 +37,7 @@ arbitrary = { git = "https://github.com/jakubadamw/rust_arbitrary.git" }
 better-panic = "0.1"
 derive_arbitrary = "0.2"
 either = "1.5"
+hashbrown = "0.6"
 honggfuzz = "0.5"
 indexmap = "1.0"
 linked-hash-map = "0.5"
