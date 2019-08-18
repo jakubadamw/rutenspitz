@@ -32,6 +32,7 @@ path = "src/tests/url.rs"
 proc-macro = true
 
 [dependencies]
+ahash = "0.2"
 arbitrary = { git = "https://github.com/jakubadamw/rust_arbitrary.git" }
 better-panic = "0.1"
 derive_arbitrary = "0.2"

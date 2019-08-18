@@ -9,47 +9,25 @@ extern crate honggfuzz;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{BuildHasher, Hash};
 
-pub struct BuildTrulyAwfulHasher {
-    seed: u8,
+pub struct BuildAHasher {
+    seed: u64,
 }
 
-impl BuildTrulyAwfulHasher {
-    pub fn new(seed: u8) -> Self {
+impl BuildAHasher {
+    pub fn new(seed: u64) -> Self {
         Self { seed }
     }
 }
 
-impl BuildHasher for BuildTrulyAwfulHasher {
-    type Hasher = TrulyAwfulHasher;
-
+impl BuildHasher for BuildAHasher {
+    type Hasher = ahash::AHasher;
     fn build_hasher(&self) -> Self::Hasher {
-        TrulyAwfulHasher::new(self.seed)
+        ahash::AHasher::new_with_key(self.seed)
     }
 }
 
-pub struct TrulyAwfulHasher {
-    hash_value: u8,
-}
-
-impl TrulyAwfulHasher {
-    fn new(seed: u8) -> Self {
-        Self { hash_value: seed }
-    }
-}
-
-impl Hasher for TrulyAwfulHasher {
-    fn write(&mut self, bytes: &[u8]) {
-        if let Some(byte) = bytes.first() {
-            self.hash_value = self.hash_value.wrapping_add(*byte) % 8;
-        }
-    }
-
-    fn finish(&self) -> u64 {
-        u64::from(self.hash_value)
-    }
-}
 pub struct ModelHashMap<K, V>
 where
     K: Eq + Hash,
@@ -146,7 +124,7 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
 
 arbitrary_stateful_operations! {
     model = ModelHashMap<K, V>,
-    tested = HashMap<K, V, BuildTrulyAwfulHasher>,
+    tested = HashMap<K, V, BuildAHasher>,
 
     type_parameters = <
         K: Clone + Debug + Eq + Hash + Ord,
@@ -200,17 +178,18 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     use arbitrary::{Arbitrary, FiniteBuffer};
 
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
-    let hash_seed: u8 = Arbitrary::arbitrary(&mut ring)?;
+    let hash_seed: u64 = Arbitrary::arbitrary(&mut ring)?;
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelHashMap::<u16, u16>::new();
-    let mut tested: HashMap<u16, u16, BuildTrulyAwfulHasher> =
-        HashMap::with_capacity_and_hasher(capacity as usize, BuildTrulyAwfulHasher::new(hash_seed));
+    let mut tested: HashMap<u16, u16, BuildAHasher> = HashMap::with_capacity_and_hasher(
+        capacity as usize,
+        BuildAHasher::new(hash_seed),
+    );
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        #[cfg(fuzzing_debug)]
-        _op_trace.push_str(format!("{}\n", op.to_string()));
+        #[cfg(fuzzing_debug)] _op_trace.push_str(&format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 
