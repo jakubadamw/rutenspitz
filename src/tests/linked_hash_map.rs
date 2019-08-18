@@ -136,15 +136,15 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut op_trace = vec![];
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
         op_trace.push(op.clone());
-        println!(
+        /*println!(
             "{}",
             op_trace
                 .iter()
                 .map(|op| op.to_string())
                 .collect::<Vec<_>>()
                 .join("\n")
-        );
-        op.execute(&mut model, &mut tested);
+        );*/
+        op.execute_and_compare(&mut model, &mut tested);
     }
 
     Ok(())

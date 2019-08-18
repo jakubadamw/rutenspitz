@@ -29,6 +29,7 @@ impl UrlFix for url::Url {
     }
 }
 
+#[allow(dead_code)]
 fn map_to_vec<T, I: Iterator<Item = T>>(i: Option<I>) -> Option<Vec<T>> {
     i.map(|i| i.collect())
 }
@@ -86,13 +87,12 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
 
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
 
-    let mut model = url::Url::parse("https://example.org").unwrap();
     let mut tested = url::Url::parse("https://example.org").unwrap();
 
     let mut op_trace = vec![];
     while let Ok(op) = <op::Op as Arbitrary>::arbitrary(&mut ring) {
         op_trace.push(op.clone());
-        op.execute(&mut model, &mut tested);
+        op.execute(&mut tested);
     }
 
     Ok(())

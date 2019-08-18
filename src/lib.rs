@@ -218,6 +218,7 @@ impl quote::ToTokens for Method {
 
 struct MethodTest<'s> {
     method: &'s Method,
+    compare: bool
 }
 
 impl<'s> quote::ToTokens for MethodTest<'s> {
@@ -245,12 +246,6 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             quote! { Op::#method_name { #(#keys),* } }
         };
 
-        let process_model_res = self
-            .method
-            .process_result
-            .as_ref()
-            .map(|p| quote! { #p(model_res) })
-            .unwrap_or(quote! { model_res });
         let process_tested_res = self
             .method
             .process_result
@@ -258,15 +253,29 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             .map(|p| quote! { #p(tested_res) })
             .unwrap_or(quote! { tested_res });
 
-        tokens.extend(quote! {
-            #pattern => {
-                let model_res = model.#method_name(#(#args),*);
-                let tested_res = tested.#method_name(#(#args),*);
-                let model_res = #process_model_res;
-                let tested_res = #process_tested_res;
-                assert_eq!(model_res, tested_res);
-            }
-        });
+        if self.compare {
+            let process_model_res = self
+                .method
+                .process_result
+                .as_ref()
+                .map(|p| quote! { #p(model_res) })
+                .unwrap_or(quote! { model_res });
+            tokens.extend(quote! {
+                #pattern => {
+                    let model_res = model.#method_name(#(#args),*);
+                    let tested_res = tested.#method_name(#(#args),*);
+                    let model_res = #process_model_res;
+                    let tested_res = #process_tested_res;
+                    assert_eq!(model_res, tested_res);
+                }
+            });
+        } else {
+            tokens.extend(quote! {
+                #pattern => {
+                    let _ = tested.#method_name(#(#args),*);
+                }
+            });
+        }
     }
 }
 
@@ -286,11 +295,18 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
         let tested = &self.spec.tested;
         let variants = &self.spec.methods;
 
+        let comp_method_tests: Vec<_> = self
+            .spec
+            .methods
+            .iter()
+            .map(|method| MethodTest { method: method, compare: true })
+            .collect();
+
         let method_tests: Vec<_> = self
             .spec
             .methods
             .iter()
-            .map(|method| MethodTest { method: method })
+            .map(|method| MethodTest { method: method, compare: false })
             .collect();
 
         let format_calls: Vec<_> = self
@@ -339,9 +355,15 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             }
 
             impl<#(#type_params_with_bounds),*> Op<#(#type_params),*> {
-                pub fn execute(self, model: &mut #model, tested: &mut #tested) {
+                pub fn execute(self, tested: &mut #tested) {
                     match self {
                         #(#method_tests),*
+                    }
+                }
+
+                pub fn execute_and_compare(self, model: &mut #model, tested: &mut #tested) {
+                    match self {
+                        #(#comp_method_tests),*
                     }
                 }
             }
