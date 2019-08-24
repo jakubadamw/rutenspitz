@@ -1,3 +1,4 @@
+#![allow(clippy::find_map)]
 #![feature(map_get_key_value)]
 
 #[macro_use]
@@ -12,6 +13,7 @@ use indexmap::IndexMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+#[derive(Default)]
 pub struct ModelHashMap<K, V>
 where
     K: Eq + Hash,
@@ -23,16 +25,12 @@ impl<K, V> ModelHashMap<K, V>
 where
     K: Eq + Hash,
 {
-    pub fn new() -> Self {
-        Self { data: Vec::new() }
-    }
-
     pub fn clear(&mut self) {
         self.data.clear()
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
-        self.data.iter().find(|probe| probe.0 == *k).is_some()
+        self.data.iter().any(|probe| probe.0 == *k)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
@@ -186,7 +184,7 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
-    let mut model = ModelHashMap::<u16, u16>::new();
+    let mut model = ModelHashMap::<u16, u16>::default();
     let mut tested = IndexMap::<u16, u16>::with_capacity(capacity as usize);
 
     let mut _op_trace = String::new();

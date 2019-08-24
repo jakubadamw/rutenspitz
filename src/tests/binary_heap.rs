@@ -8,6 +8,7 @@ extern crate honggfuzz;
 use std::collections::BinaryHeap;
 use std::fmt::Debug;
 
+#[derive(Default)]
 pub struct ModelBinaryHeap<T>
 where
     T: Ord,
@@ -19,10 +20,6 @@ impl<T> ModelBinaryHeap<T>
 where
     T: Ord,
 {
-    pub fn new() -> Self {
-        Self { data: Vec::new() }
-    }
-
     pub fn clear(&mut self) {
         self.data.clear()
     }
@@ -95,7 +92,7 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
-    let mut model = ModelBinaryHeap::<u16>::new();
+    let mut model = ModelBinaryHeap::<u16>::default();
     let mut tested = BinaryHeap::<u16>::with_capacity(capacity as usize);
 
     let mut _op_trace = String::new();

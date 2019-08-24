@@ -1,3 +1,4 @@
+#![allow(clippy::find_map)]
 #![feature(map_get_key_value)]
 #![feature(shrink_to)]
 
@@ -31,6 +32,7 @@ impl BuildHasher for BuildAHasher {
     }
 }
 
+#[derive(Default)]
 pub struct ModelHashMap<K, V>
 where
     K: Eq + Hash,
@@ -42,16 +44,12 @@ impl<K, V> ModelHashMap<K, V>
 where
     K: Eq + Hash,
 {
-    pub fn new() -> Self {
-        Self { data: Vec::new() }
-    }
-
     pub fn clear(&mut self) {
         self.data.clear()
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
-        self.data.iter().find(|probe| probe.0 == *k).is_some()
+        self.data.iter().any(|probe| probe.0 == *k)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {
@@ -171,7 +169,7 @@ arbitrary_stateful_operations! {
 
     post {
         // A bit of a hack.
-        if &self == &Self::clear {
+        if self == Self::clear {
             assert_eq!(tested.capacity(), prev_capacity,
                 "capacity: {}, previous: {}",
                 tested.capacity(), prev_capacity);
@@ -191,45 +189,12 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
 
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
 
-    let mut model = ModelHashMap::<u16, u16>::new();
-
-    let capacity: usize = 28;
-    let hash_seed: u64 = 4774451669087367725;
-
+    let capacity: usize = Arbitrary::arbitrary(&mut ring)?;
+    let hash_seed: u64 = Arbitrary::arbitrary(&mut ring)?;
+    
+    let mut model = ModelHashMap::<u16, u16>::default();
     let mut tested: HashMap<u16, u16, BuildAHasher> =
         HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
-    let items: Vec<(u16, u16)> = vec![
-        (1988, 29987),
-        (2666, 27242),
-        (6040, 2394),
-        (25752, 61248),
-        (27146, 27242),
-        (27241, 27242),
-        (27242, 27242),
-        (27243, 27242),
-        (27285, 27242),
-        (27331, 27242),
-        (28712, 1989),
-        (29517, 57394),
-        (32582, 1480),
-        (34410, 27242),
-        (35690, 26931),
-        (38250, 27242),
-        (39274, 15180),
-        (44843, 27864),
-        (48680, 48830),
-        (56389, 27242),
-        (57394, 52917),
-        (61248, 34543),
-        (61510, 51837),
-        (63016, 47943)
-    ];
-    for (k, v) in items {
-        model.insert(k, v);
-        tested.insert(k, v);
-    }
-    model.remove(&29517);
-    tested.remove(&29517);
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {

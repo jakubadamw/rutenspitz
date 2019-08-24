@@ -1,3 +1,4 @@
+#![allow(clippy::find_map, clippy::filter_map)]
 #![feature(map_get_key_value)]
 
 #[macro_use]
@@ -10,6 +11,7 @@ extern crate honggfuzz;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 
+#[derive(Default)]
 pub struct ModelBTreeMap<K, V>
 where
     K: Eq + Ord,
@@ -30,7 +32,7 @@ where
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
-        self.data.iter().find(|probe| probe.0 == *k).is_some()
+        self.data.iter().any(|probe| probe.0 == *k)
     }
 
     pub fn get(&self, k: &K) -> Option<&V> {

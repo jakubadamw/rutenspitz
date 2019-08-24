@@ -1,3 +1,5 @@
+#![allow(clippy::let_unit_value)]
+
 #[macro_use]
 extern crate arbitrary_model_tests;
 #[macro_use]
@@ -16,25 +18,25 @@ trait UrlFix {
 
 impl UrlFix for url::Url {
     fn set_fragment_(&mut self, fragment: &Option<String>) {
-        self.set_fragment(fragment.as_ref().map(|s| s.as_str()));
+        self.set_fragment(fragment.as_ref().map(String::as_str));
     }
 
     fn set_host_(&mut self, host: &Option<String>) {
-        let _ = self.set_host(host.as_ref().map(|s| s.as_str()));
+        let _ = self.set_host(host.as_ref().map(String::as_str));
     }
 
     fn set_password_(&mut self, password: &Option<String>) {
-        let _ = self.set_password(password.as_ref().map(|s| s.as_str()));
+        let _ = self.set_password(password.as_ref().map(String::as_str));
     }
 
     fn set_query_(&mut self, query: &Option<String>) {
-        let _ = self.set_query(query.as_ref().map(|s| s.as_str()));
+        let _ = self.set_query(query.as_ref().map(String::as_str));
     }
 }
 
 #[allow(dead_code)]
 fn map_to_vec<T, I: Iterator<Item = T>>(i: Option<I>) -> Option<Vec<T>> {
-    i.map(|i| i.collect())
+    i.map(Iterator::collect)
 }
 
 arbitrary_stateful_operations! {

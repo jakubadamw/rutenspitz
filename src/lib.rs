@@ -21,6 +21,7 @@ mod kw {
     syn::custom_keyword!(type_parameters);
 }
 
+#[allow(clippy::enum_variant_names)]
 enum PassingMode {
     ByValue,
     ByRef,
@@ -101,21 +102,18 @@ impl syn::parse::Parse for Method {
         let args: Vec<_> = args.into_iter().filter_map(Either::right).collect();
 
         let receiver = receivers.first();
-        match receiver {
-            Some(receiver) => {
-                if receiver.reference.is_none() {
-                    return Err(syn::Error::new(
-                        receiver.span(),
-                        "unexpected by-value receiver",
-                    ));
-                }
-            }
-            None => {
+        if let Some(receiver) = receiver {
+            if receiver.reference.is_none() {
                 return Err(syn::Error::new(
-                    method_item.span(),
-                    "unexpected method with no receiver",
+                    receiver.span(),
+                    "unexpected by-value receiver",
                 ));
             }
+        } else {
+            return Err(syn::Error::new(
+                method_item.span(),
+                "unexpected method with no receiver",
+            ));
         }
 
         Ok(Self {
@@ -248,7 +246,7 @@ impl quote::ToTokens for Method {
 
         if !self.inputs.is_empty() {
             let mut fields = pm2::TokenStream::new();
-            for input in self.inputs.iter() {
+            for input in &self.inputs {
                 fields.append(input.name.clone());
                 fields.append(Punct::new(':', Spacing::Joint));
                 input.ty.to_tokens(&mut fields);
@@ -327,6 +325,7 @@ struct OperationEnum<'s> {
 }
 
 impl<'s> quote::ToTokens for OperationEnum<'s> {
+    #[allow(clippy::cognitive_complexity)]
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
         let type_params_with_bounds = &self.spec.type_params;
         let type_params: Vec<_> = type_params_with_bounds
