@@ -1,5 +1,7 @@
 # arbitrary-model-tests
 
+![Build status](https://github.com/jakubadamw/arbitrary-model-tests/workflows/Build/badge.svg)
+
 This is an attempt at creating a convenient procedural macro to be used for testing stateful models (in particular, various kinds of data structures) against a trivial (but usually very inefficient) implementation that is semantically 100% equivalent to the target implementation but, in contrast, *obviously* correct. The purpose of the macro is to generate the boilerplate code for testing particular operations of the model so that the user-provided definition of the test for a given stateful structure becomes as succinct as possible.
 
 This crate was inspired by the following work:
