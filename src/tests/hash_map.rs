@@ -15,11 +15,11 @@ use std::fmt::Debug;
 use std::hash::{BuildHasher, Hash};
 
 pub struct BuildAHasher {
-    seed: u64,
+    seed: u128,
 }
 
 impl BuildAHasher {
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: u128) -> Self {
         Self { seed }
     }
 }
@@ -28,7 +28,7 @@ impl BuildHasher for BuildAHasher {
     type Hasher = ahash::AHasher;
 
     fn build_hasher(&self) -> Self::Hasher {
-        ahash::AHasher::new_with_key(self.seed)
+        ahash::AHasher::new_with_keys((self.seed >> 64) as u64, self.seed as u64)
     }
 }
 
@@ -190,7 +190,7 @@ fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
     let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
 
     let capacity: usize = Arbitrary::arbitrary(&mut ring)?;
-    let hash_seed: u64 = Arbitrary::arbitrary(&mut ring)?;
+    let hash_seed: u128 = Arbitrary::arbitrary(&mut ring)?;
     
     let mut model = ModelHashMap::<u16, u16>::default();
     let mut tested: HashMap<u16, u16, BuildAHasher> =
