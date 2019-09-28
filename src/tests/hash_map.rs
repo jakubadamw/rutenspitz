@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::find_map)]
 #![feature(map_get_key_value)]
 #![feature(shrink_to)]
