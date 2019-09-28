@@ -106,10 +106,6 @@ where
         Some(self.data.swap_remove(index))
     }
 
-    pub fn remove(&mut self, k: &K) -> Option<V> {
-        self.swap_remove(k)
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.data.iter().map(|e| (&e.0, &e.1))
     }
@@ -160,7 +156,6 @@ arbitrary_stateful_operations! {
             fn is_empty(&self) -> bool;
             fn len(&self) -> usize;
             fn pop(&mut self) -> Option<(K, V)>;
-            fn remove(&mut self, k: &K) -> Option<V>;
             fn swap_remove(&mut self, key: &K) -> Option<V>;
             fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)>;
             fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)>;
