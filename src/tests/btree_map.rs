@@ -1,5 +1,4 @@
 #![allow(clippy::find_map, clippy::filter_map)]
-#![feature(map_get_key_value)]
 
 #[macro_use]
 extern crate arbitrary_model_tests;
