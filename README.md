@@ -4,7 +4,7 @@
 
 This is an attempt at creating a convenient procedural macro to be used for testing stateful models (in particular, various kinds of data structures) against a trivial (but usually very inefficient) implementation that is semantically 100% equivalent to the target implementation but, in contrast, *obviously* correct. The purpose of the macro is to generate the boilerplate code for testing particular operations of the model so that the user-provided definition of the test for a given stateful structure becomes as succinct as possible.
 
-This crate was inspired by the following work:
+This crate was inspired by the following works:
 
 * [bughunt-rust](https://github.com/blt/bughunt-rust)
 * [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz)
@@ -14,7 +14,7 @@ This crate was inspired by the following work:
 
 See the [`HashMap` test](src/tests/hash_map.rs) for reference.
 
-You can run it with `cargo hfuzz`. You'll first need to install `honggfuzz` along with its system dependencies. See [this section](https://github.com/rust-fuzz/honggfuzz-rs#dependencies) for more details. When you're done, this is all it takes to run the test:
+You can run it with `cargo hfuzz`. First of all you'll need to install `honggfuzz` along with its system dependencies. See [this section](https://github.com/rust-fuzz/honggfuzz-rs#dependencies) for more details. When you're done, all you need to run the test:
 
 ```
 cargo hfuzz run hash_map
