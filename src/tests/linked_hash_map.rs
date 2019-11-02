@@ -1,11 +1,11 @@
 #![allow(clippy::find_map)]
+#![allow(clippy::must_use_candidate)]
 
 #[macro_use]
-extern crate arbitrary_model_tests;
-#[macro_use]
 extern crate derive_arbitrary;
-#[macro_use]
-extern crate honggfuzz;
+
+use arbitrary_model_tests::arbitrary_stateful_operations;
+use honggfuzz::fuzz;
 
 use linked_hash_map::LinkedHashMap;
 

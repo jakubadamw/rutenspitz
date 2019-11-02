@@ -1,13 +1,13 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::find_map)]
+#![allow(clippy::must_use_candidate)]
 #![feature(shrink_to)]
 
 #[macro_use]
-extern crate arbitrary_model_tests;
-#[macro_use]
 extern crate derive_arbitrary;
-#[macro_use]
-extern crate honggfuzz;
+
+use arbitrary_model_tests::arbitrary_stateful_operations;
+use honggfuzz::fuzz;
 
 use hashbrown::HashMap;
 

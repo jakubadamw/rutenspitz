@@ -1,11 +1,10 @@
 #![allow(clippy::let_unit_value)]
 
 #[macro_use]
-extern crate arbitrary_model_tests;
-#[macro_use]
 extern crate derive_arbitrary;
-#[macro_use]
-extern crate honggfuzz;
+
+use arbitrary_model_tests::arbitrary_stateful_operations;
+use honggfuzz::fuzz;
 
 use std::fmt::Debug;
 
