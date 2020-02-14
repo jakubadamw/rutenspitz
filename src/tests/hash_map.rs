@@ -1,7 +1,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::find_map)]
 #![allow(clippy::must_use_candidate)]
-#![feature(shrink_to)]
+//#![feature(shrink_to)]
 
 #[macro_use]
 extern crate derive_arbitrary;
@@ -92,9 +92,9 @@ where
         pos.map(|idx| self.data.swap_remove(idx).1)
     }
 
-    pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
-    }
+    // pub fn shrink_to(&mut self, min_capacity: usize) {
+    //     self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
+    // }
 
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
@@ -149,7 +149,7 @@ arbitrary_stateful_operations! {
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
             fn remove(&mut self, k: &K) -> Option<V>;
-            fn shrink_to(&mut self, min_capacity: usize);
+            //fn shrink_to(&mut self, min_capacity: usize);
             fn shrink_to_fit(&mut self);
         }
 
