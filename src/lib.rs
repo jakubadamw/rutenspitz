@@ -303,11 +303,24 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                 .unwrap_or(quote! { model_res });
             tokens.extend(quote! {
                 #pattern => {
-                    let model_res = model.#method_name(#(#args),*);
-                    let tested_res = tested.#method_name(#(#args),*);
-                    let model_res = #process_model_res;
-                    let tested_res = #process_tested_res;
-                    assert_eq!(model_res, tested_res);
+                    let model_panic_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        model.#method_name(#(#args),*)
+                    }));
+                    let tested_panic_res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        tested.#method_name(#(#args),*)
+                    }));
+                    match (model_panic_res.is_ok(), tested_panic_res.is_ok()) {
+                        (true, true) => {
+                            let model_res = model_panic_res.unwrap();
+                            let tested_res = tested_panic_res.unwrap();
+                            let model_res = #process_model_res;
+                            let tested_res = #process_tested_res;
+                            assert_eq!(model_res, tested_res);
+                        },
+                        (true, false) => panic!("Model panicked while implementation did not"),
+                        (false, true) => panic!("Implementation panicked while the model did not"),
+                        (false, false) => {}, // both panicked, nothing to do
+                    };
                 }
             });
         } else {
