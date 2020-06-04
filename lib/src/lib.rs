@@ -392,7 +392,7 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
 
         tokens.extend(quote! {
             #[allow(non_camel_case_types)]
-            #[derive(Arbitrary, Clone, Debug, PartialEq)]
+            #[derive(arbitrary::Arbitrary, Clone, Debug, PartialEq)]
             pub enum Op<#(#type_params_with_bounds),*> {
                 #(#variants),*
             }

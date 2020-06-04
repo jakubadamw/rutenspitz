@@ -1,47 +1,5 @@
-[package]
-name = "arbitrary-model-tests"
-version = "0.1.0"
-authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
-edition = "2018"
-
-[[bin]]
-name = "binary_heap"
-path = "src/tests/binary_heap.rs"
-
-[[bin]]
-name = "btree_map"
-path = "src/tests/btree_map.rs"
-
-[[bin]]
-name = "hash_map"
-path = "src/tests/hash_map.rs"
-
-[[bin]]
-name = "index_map"
-path = "src/tests/index_map.rs"
-
-[[bin]]
-name = "linked_hash_map"
-path = "src/tests/linked_hash_map.rs"
-
-[[bin]]
-name = "url"
-path = "src/tests/url.rs"
-
-[lib]
-proc-macro = true
-
-[dependencies]
-ahash = "0.2"
-arbitrary = { git = "https://github.com/jakubadamw/rust_arbitrary.git" }
-better-panic = "0.1"
-derive_arbitrary = "0.2"
-either = "1.5"
-hashbrown = "0.6"
-honggfuzz = "0.5"
-indexmap = "1.0"
-linked-hash-map = "0.5"
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "1.0", features = ["full"] }
-url = "2.1"
+[workspace]
+members = [
+    "lib",
+    "examples"
+]
