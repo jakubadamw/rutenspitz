@@ -1,6 +1,8 @@
 # arbitrary-model-tests
 
-![Build status](https://github.com/jakubadamw/arbitrary-model-tests/workflows/Build/badge.svg)
+[![Build status](https://github.com/jakubadamw/arbitrary-model-tests/workflows/Build/badge.svg)](https://github.com/jakubadamw/backoff-futures/actions?query=workflow%3ABuild)
+[![crates.io](https://img.shields.io/crates/v/arbitrary-model-tests.svg)](https://crates.io/crates/arbitrary-model-tests)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 This is an attempt at creating a convenient procedural macro to be used for testing stateful models (in particular, various kinds of data structures) against a trivial (but usually very inefficient) implementation that is semantically 100% equivalent to the target implementation but, in contrast, *obviously* correct. The purpose of the macro is to generate the boilerplate code for testing particular operations of the model so that the user-provided definition of the test for a given stateful structure becomes as succinct as possible.
 
