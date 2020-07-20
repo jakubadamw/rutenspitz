@@ -24,10 +24,6 @@ You can run it with `cargo hfuzz`. First of all you'll need to install `honggfuz
 cargo hfuzz run hash_map
 ```
 
-## Debugging
-
-The `Op` struct implements the `Display` trait by trying to produce actual Rust code equivalent of the operation (e.g. `v.insert(0, 2);` for an insert operation of a HashMap). This can be very usefully employed to produce a human-friendly operation trace to be inspected when debugging (in a proper debugger, say, lldb) an actual crash found by the fuzzer. See [these two lines](examples/src/hash_map.rs#L197-L198) for reference. Such a trace could later be used as a base for an independent unit test.
-
 ## DSL
 
 This is the initial take at a DSL that describes the stateful model to be tested (`std::collections::HashMap` in this case).
@@ -82,3 +78,7 @@ arbitrary_stateful_operations! {
     }
 }
 ```
+
+## Debugging
+
+See [this guide](DEBUGGING.md).
