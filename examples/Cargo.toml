@@ -30,12 +30,12 @@ name = "url"
 path = "src/url.rs"
 
 [dependencies]
-ahash = "0.3"
+ahash = "0.4"
 arbitrary = { version = "0.4.5", features = ["derive"] }
 better-panic = "0.2"
 hashbrown = "0.8"
 honggfuzz = "0.5"
-indexmap = "1.4"
+indexmap = "1.5"
 linked-hash-map = "0.5"
 rutenspitz = { path = "../lib" }
 url = "2.1"
