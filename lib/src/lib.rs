@@ -298,11 +298,58 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                 .unwrap_or(quote! { model_res });
             tokens.extend(quote! {
                 #pattern => {
-                    let model_res = model.#method_name(#(#args),*);
-                    let tested_res = tested.#method_name(#(#args),*);
-                    let model_res = #process_model_res;
-                    let tested_res = #process_tested_res;
-                    assert_eq!(model_res, tested_res);
+					#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+					enum WhichFailed {
+					    None(bool),
+					    First,
+					    Second,
+					}
+					
+					struct GalaxyBrain<'a> {
+					    value: WhichFailed,
+					    to_update: &'a mut WhichFailed,
+					}
+					
+					impl<'a> Drop for GalaxyBrain<'a> {
+					    fn drop(&mut self) {
+					        *self.to_update = self.value;
+					    }
+					} 
+
+					let mut f = WhichFailed::First;
+
+    				{
+    				    let mut guard = GalaxyBrain {
+    				        value: WhichFailed::First,
+    				        to_update: &mut f,
+    				    };
+    				
+    				    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        	let model_res = model.#method_name(#(#args),*);
+    				        guard.value = WhichFailed::Second;
+                        	let tested_res = tested.#method_name(#(#args),*);
+
+                    		let model_res = #process_model_res;
+                    		let tested_res = #process_tested_res;
+
+    				        guard.value = WhichFailed::None(model_res == tested_res);
+    				    }));
+    				}
+    				
+    				if f == WhichFailed::Second {
+                        panic!("Implementation panicked while the model did not");
+    				}
+    				
+    				if let WhichFailed::None(test_passed) = f {
+                        assert!(test_passed, "The values aren't equal");
+    				}
+    				
+    				/* First paniced, check if second also does */
+    				let x = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        tested.#method_name(#(#args),*);
+    				}));
+    				
+    				assert!(matches!(x, Err(_)));
                 }
             });
         } else {
