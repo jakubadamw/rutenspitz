@@ -185,7 +185,7 @@ fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
 
     let mut ring = Unstructured::new(&data);
 
-    let capacity: usize = Arbitrary::arbitrary(&mut ring)?;
+    let capacity: u16 = Arbitrary::arbitrary(&mut ring)?;
     let hash_seed: u128 = Arbitrary::arbitrary(&mut ring)?;
     
     let mut model = ModelHashMap::<u16, u16>::default();
