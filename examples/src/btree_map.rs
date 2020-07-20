@@ -1,29 +1,30 @@
 #![allow(clippy::find_map)]
+#![allow(clippy::filter_map)]
 #![allow(clippy::must_use_candidate)]
+#![allow(clippy::option_if_let_else)]
 
-#[macro_use]
-extern crate derive_arbitrary;
-
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
-use indexmap::IndexMap;
-
+use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::hash::Hash;
 
 #[derive(Default)]
-pub struct ModelHashMap<K, V>
+pub struct ModelBTreeMap<K, V>
 where
-    K: Eq + Hash,
+    K: Eq + Ord,
 {
     data: Vec<(K, V)>,
 }
 
-impl<K, V> ModelHashMap<K, V>
+impl<K, V> ModelBTreeMap<K, V>
 where
-    K: Eq + Hash,
+    K: Eq + Ord,
 {
+    pub fn new() -> Self {
+        Self { data: Vec::new() }
+    }
+
     pub fn clear(&mut self) {
         self.data.clear()
     }
@@ -36,28 +37,11 @@ where
         self.data.iter().find(|probe| probe.0 == *k).map(|e| &e.1)
     }
 
-    pub fn get_full(&self, k: &K) -> Option<(usize, &K, &V)> {
+    pub fn get_key_value(&self, k: &K) -> Option<(&K, &V)> {
         self.data
             .iter()
-            .enumerate()
-            .find(|(_, probe)| probe.0 == *k)
-            .map(|(i, e)| (i, &e.0, &e.1))
-    }
-
-    pub fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)> {
-        self.data
-            .iter_mut()
-            .enumerate()
-            .find(|(_, probe)| probe.0 == *k)
-            .map(|(i, e)| (i, &e.0, &mut e.1))
-    }
-
-    pub fn get_index(&self, index: usize) -> Option<(&K, &V)> {
-        self.data.get(index).map(|el| (&el.0, &el.1))
-    }
-
-    pub fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)> {
-        self.data.get_mut(index).map(|el| (&mut el.0, &mut el.1))
+            .find(|probe| probe.0 == *k)
+            .map(|e| (&e.0, &e.1))
     }
 
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
@@ -84,25 +68,9 @@ where
         self.data.len()
     }
 
-    pub fn pop(&mut self) -> Option<(K, V)> {
-        self.data.pop()
-    }
-
-    pub fn swap_remove(&mut self, key: &K) -> Option<V> {
-        self.swap_remove_full(key).map(|(_, _, v)| v)
-    }
-
-    pub fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)> {
-        let pos = self.data.iter().position(|probe| probe.0 == *key);
-        pos.map(|idx| (idx, self.data.swap_remove(idx)))
-            .map(|(idx, (k, v))| (idx, k, v))
-    }
-
-    pub fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)> {
-        if index >= self.data.len() {
-            return None;
-        }
-        Some(self.data.swap_remove(index))
+    pub fn remove(&mut self, k: &K) -> Option<V> {
+        let pos = self.data.iter().position(|probe| probe.0 == *k);
+        pos.map(|idx| self.data.swap_remove(idx).1)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
@@ -115,6 +83,23 @@ where
 
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.data.iter().map(|e| &e.0)
+    }
+
+    pub fn range(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)> {
+        self.range_mut(range).map(|e| (&*e.0, &*e.1))
+    }
+
+    pub fn range_mut(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)> {
+        self.data
+            .iter_mut()
+            .filter(move |e| e.0 >= range.start && e.0 < range.end)
+            .map(|e| (&e.0, &mut e.1))
+    }
+
+    pub fn split_off(&mut self, key: &K) -> impl IntoIterator<Item = (K, V)> {
+        let (a, b) = self.data.drain(..).partition(|probe| probe.0 < *key);
+        self.data = a;
+        b
     }
 
     pub fn values(&self) -> impl Iterator<Item = &V> {
@@ -132,13 +117,19 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
     v
 }
 
+fn sort_iterable<T: Ord, I: IntoIterator<Item = T>>(i: I) -> Vec<T> {
+    let mut v: Vec<_> = i.into_iter().collect::<Vec<_>>();
+    v.sort();
+    v
+}
+
 arbitrary_stateful_operations! {
-    model = ModelHashMap<K, V>,
-    tested = IndexMap<K, V>,
+    model = ModelBTreeMap<K, V>,
+    tested = BTreeMap<K, V>,
 
     type_parameters = <
-        K: Clone + Copy + Debug + Eq + Hash + Ord,
-        V: Clone + Debug + Eq + Ord
+        K: Clone + Copy + Debug + Eq + Ord,
+        V: Clone + Copy + Debug + Eq + Ord
     >,
 
     methods {
@@ -146,40 +137,36 @@ arbitrary_stateful_operations! {
             fn clear(&mut self);
             fn contains_key(&self, k: &K) -> bool;
             fn get(&self, k: &K) -> Option<&V>;
-            fn get_full(&self, k: &K) -> Option<(usize, &K, &V)>;
-            fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)>;
-            fn get_index(&self, index: usize) -> Option<(&K, &V)>;
-            fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)>;
+            fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
             fn is_empty(&self) -> bool;
             fn len(&self) -> usize;
-            fn pop(&mut self) -> Option<(K, V)>;
-            fn swap_remove(&mut self, key: &K) -> Option<V>;
-            fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)>;
-            fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)>;
+            fn remove(&mut self, k: &K) -> Option<V>;
         }
 
         equal_with(sort_iterator) {
             fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
             fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
             fn keys(&self) -> impl Iterator<Item = &K>;
+            fn range(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)>;
+            fn range_mut(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)>;
             fn values(&self) -> impl Iterator<Item = &V>;
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
+        }
+
+        equal_with(sort_iterable) {
+            fn split_off(&mut self, k: &K) -> impl IntoIterator<Item = (&K, &V)>;
         }
     }
 }
 
-const MAX_RING_SIZE: usize = 65_536;
+fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
+    use arbitrary::{Arbitrary, Unstructured};
 
-fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
-    use arbitrary::{Arbitrary, FiniteBuffer};
-
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
-    let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
-
-    let mut model = ModelHashMap::<u16, u16>::default();
-    let mut tested = IndexMap::<u16, u16>::with_capacity(capacity as usize);
+    let mut ring = Unstructured::new(&data);
+    let mut model = ModelBTreeMap::<u16, u16>::new();
+    let mut tested = BTreeMap::<u16, u16>::new();
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {

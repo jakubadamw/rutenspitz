@@ -1,10 +1,7 @@
 #![allow(clippy::let_unit_value)]
 
-#[macro_use]
-extern crate derive_arbitrary;
-
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
 use std::fmt::Debug;
 
@@ -84,12 +81,10 @@ arbitrary_stateful_operations! {
     }
 }
 
-const MAX_RING_SIZE: usize = 65_536;
+fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
+    use arbitrary::{Arbitrary, Unstructured};
 
-fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
-    use arbitrary::{Arbitrary, FiniteBuffer};
-
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
+    let mut ring = Unstructured::new(&data);
 
     let mut tested = url::Url::parse("https://example.org").unwrap();
 

@@ -1,36 +1,14 @@
-#![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::find_map)]
 #![allow(clippy::must_use_candidate)]
-//#![feature(shrink_to)]
+#![allow(clippy::option_if_let_else)]
 
-#[macro_use]
-extern crate derive_arbitrary;
-
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
-use hashbrown::HashMap;
+use indexmap::IndexMap;
 
 use std::fmt::Debug;
-use std::hash::{BuildHasher, Hash};
-
-pub struct BuildAHasher {
-    seed: u128,
-}
-
-impl BuildAHasher {
-    pub fn new(seed: u128) -> Self {
-        Self { seed }
-    }
-}
-
-impl BuildHasher for BuildAHasher {
-    type Hasher = ahash::AHasher;
-
-    fn build_hasher(&self) -> Self::Hasher {
-        ahash::AHasher::new_with_keys((self.seed >> 64) as u64, self.seed as u64)
-    }
-}
+use std::hash::Hash;
 
 #[derive(Default)]
 pub struct ModelHashMap<K, V>
@@ -56,11 +34,28 @@ where
         self.data.iter().find(|probe| probe.0 == *k).map(|e| &e.1)
     }
 
-    pub fn get_key_value(&self, k: &K) -> Option<(&K, &V)> {
+    pub fn get_full(&self, k: &K) -> Option<(usize, &K, &V)> {
         self.data
             .iter()
-            .find(|probe| probe.0 == *k)
-            .map(|e| (&e.0, &e.1))
+            .enumerate()
+            .find(|(_, probe)| probe.0 == *k)
+            .map(|(i, e)| (i, &e.0, &e.1))
+    }
+
+    pub fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)> {
+        self.data
+            .iter_mut()
+            .enumerate()
+            .find(|(_, probe)| probe.0 == *k)
+            .map(|(i, e)| (i, &e.0, &mut e.1))
+    }
+
+    pub fn get_index(&self, index: usize) -> Option<(&K, &V)> {
+        self.data.get(index).map(|el| (&el.0, &el.1))
+    }
+
+    pub fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)> {
+        self.data.get_mut(index).map(|el| (&mut el.0, &mut el.1))
     }
 
     pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
@@ -87,21 +82,25 @@ where
         self.data.len()
     }
 
-    pub fn remove(&mut self, k: &K) -> Option<V> {
-        let pos = self.data.iter().position(|probe| probe.0 == *k);
-        pos.map(|idx| self.data.swap_remove(idx).1)
+    pub fn pop(&mut self) -> Option<(K, V)> {
+        self.data.pop()
     }
 
-    // pub fn shrink_to(&mut self, min_capacity: usize) {
-    //     self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
-    // }
-
-    pub fn shrink_to_fit(&mut self) {
-        self.data.shrink_to_fit();
+    pub fn swap_remove(&mut self, key: &K) -> Option<V> {
+        self.swap_remove_full(key).map(|(_, _, v)| v)
     }
 
-    pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
-        self.data.drain(..)
+    pub fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)> {
+        let pos = self.data.iter().position(|probe| probe.0 == *key);
+        pos.map(|idx| (idx, self.data.swap_remove(idx)))
+            .map(|(idx, (k, v))| (idx, k, v))
+    }
+
+    pub fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)> {
+        if index >= self.data.len() {
+            return None;
+        }
+        Some(self.data.swap_remove(index))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
@@ -133,10 +132,10 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
 
 arbitrary_stateful_operations! {
     model = ModelHashMap<K, V>,
-    tested = HashMap<K, V, BuildAHasher>,
+    tested = IndexMap<K, V>,
 
     type_parameters = <
-        K: Clone + Debug + Eq + Hash + Ord,
+        K: Clone + Copy + Debug + Eq + Hash + Ord,
         V: Clone + Debug + Eq + Ord
     >,
 
@@ -145,16 +144,21 @@ arbitrary_stateful_operations! {
             fn clear(&mut self);
             fn contains_key(&self, k: &K) -> bool;
             fn get(&self, k: &K) -> Option<&V>;
-            fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
+            fn get_full(&self, k: &K) -> Option<(usize, &K, &V)>;
+            fn get_full_mut(&mut self, k: &K) -> Option<(usize, &K, &mut V)>;
+            fn get_index(&self, index: usize) -> Option<(&K, &V)>;
+            fn get_index_mut(&mut self, index: usize) -> Option<(&mut K, &mut V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
-            fn remove(&mut self, k: &K) -> Option<V>;
-            //fn shrink_to(&mut self, min_capacity: usize);
-            fn shrink_to_fit(&mut self);
+            fn is_empty(&self) -> bool;
+            fn len(&self) -> usize;
+            fn pop(&mut self) -> Option<(K, V)>;
+            fn swap_remove(&mut self, key: &K) -> Option<V>;
+            fn swap_remove_full(&mut self, key: &K) -> Option<(usize, K, V)>;
+            fn swap_remove_index(&mut self, index: usize) -> Option<(K, V)>;
         }
 
         equal_with(sort_iterator) {
-            fn drain(&mut self) -> impl Iterator<Item = (K, V)>;
             fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
             fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
             fn keys(&self) -> impl Iterator<Item = &K>;
@@ -162,44 +166,21 @@ arbitrary_stateful_operations! {
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
     }
-
-    pre {
-        let prev_capacity = tested.capacity();
-    }
-
-    post {
-        // A bit of a hack.
-        if self == Self::clear {
-            assert_eq!(tested.capacity(), prev_capacity,
-                "capacity: {}, previous: {}",
-                tested.capacity(), prev_capacity);
-        }
-
-        assert!(tested.capacity() >= model.len());
-        assert_eq!(tested.is_empty(), model.is_empty());
-        assert_eq!(tested.len(), model.len());
-    }
 }
 
-const MAX_RING_SIZE: usize = 16_384;
-//const MAX_RING_SIZE: usize = 65_536;
+fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
+    use arbitrary::{Arbitrary, Unstructured};
 
-fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
-    use arbitrary::{Arbitrary, FiniteBuffer};
+    let mut ring = Unstructured::new(&data);
+    let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
-
-    let capacity: usize = Arbitrary::arbitrary(&mut ring)?;
-    let hash_seed: u128 = Arbitrary::arbitrary(&mut ring)?;
-    
     let mut model = ModelHashMap::<u16, u16>::default();
-    let mut tested: HashMap<u16, u16, BuildAHasher> =
-        HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
+    let mut tested = IndexMap::<u16, u16>::with_capacity(capacity as usize);
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
         #[cfg(fuzzing_debug)]
-        _op_trace.push_str(&format!("{}\n", op.to_string()));
+        _op_trace.push_str(format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

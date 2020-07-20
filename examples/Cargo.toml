@@ -1,0 +1,41 @@
+[package]
+name = "rutenspitz-examples"
+version = "0.1.1"
+authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
+edition = "2018"
+license = "MIT"
+
+[[bin]]
+name = "binary_heap"
+path = "src/binary_heap.rs"
+
+[[bin]]
+name = "btree_map"
+path = "src/btree_map.rs"
+
+[[bin]]
+name = "hash_map"
+path = "src/hash_map.rs"
+
+[[bin]]
+name = "index_map"
+path = "src/index_map.rs"
+
+[[bin]]
+name = "linked_hash_map"
+path = "src/linked_hash_map.rs"
+
+[[bin]]
+name = "url"
+path = "src/url.rs"
+
+[dependencies]
+ahash = "0.4"
+arbitrary = { version = "0.4.5", features = ["derive"] }
+better-panic = "0.2"
+hashbrown = "0.8"
+honggfuzz = "0.5"
+indexmap = "1.5"
+linked-hash-map = "0.5"
+rutenspitz = { path = "../lib" }
+url = "2.1"

@@ -1,30 +1,48 @@
-#![allow(clippy::find_map, clippy::filter_map, clippy::must_use_candidate)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::find_map)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::option_if_let_else)]
 
-#[macro_use]
-extern crate derive_arbitrary;
+#![feature(shrink_to)]
 
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
-use std::collections::BTreeMap;
+use hashbrown::HashMap;
+
 use std::fmt::Debug;
+use std::hash::{BuildHasher, Hash};
+
+pub struct BuildAHasher {
+    seed: u128,
+}
+
+impl BuildAHasher {
+    pub fn new(seed: u128) -> Self {
+        Self { seed }
+    }
+}
+
+impl BuildHasher for BuildAHasher {
+    type Hasher = ahash::AHasher;
+
+    fn build_hasher(&self) -> Self::Hasher {
+        ahash::AHasher::new_with_keys(self.seed >> 64, self.seed % u128::from(u64::MAX))
+    }
+}
 
 #[derive(Default)]
-pub struct ModelBTreeMap<K, V>
+pub struct ModelHashMap<K, V>
 where
-    K: Eq + Ord,
+    K: Eq + Hash,
 {
     data: Vec<(K, V)>,
 }
 
-impl<K, V> ModelBTreeMap<K, V>
+impl<K, V> ModelHashMap<K, V>
 where
-    K: Eq + Ord,
+    K: Eq + Hash,
 {
-    pub fn new() -> Self {
-        Self { data: Vec::new() }
-    }
-
     pub fn clear(&mut self) {
         self.data.clear()
     }
@@ -73,6 +91,18 @@ where
         pos.map(|idx| self.data.swap_remove(idx).1)
     }
 
+    // pub fn shrink_to(&mut self, min_capacity: usize) {
+    //     self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
+    // }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.data.shrink_to_fit();
+    }
+
+    pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
+        self.data.drain(..)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.data.iter().map(|e| (&e.0, &e.1))
     }
@@ -83,23 +113,6 @@ where
 
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.data.iter().map(|e| &e.0)
-    }
-
-    pub fn range(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)> {
-        self.range_mut(range).map(|e| (&*e.0, &*e.1))
-    }
-
-    pub fn range_mut(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)> {
-        self.data
-            .iter_mut()
-            .filter(move |e| e.0 >= range.start && e.0 < range.end)
-            .map(|e| (&e.0, &mut e.1))
-    }
-
-    pub fn split_off(&mut self, key: &K) -> impl IntoIterator<Item = (K, V)> {
-        let (a, b) = self.data.drain(..).partition(|probe| probe.0 < *key);
-        self.data = a;
-        b
     }
 
     pub fn values(&self) -> impl Iterator<Item = &V> {
@@ -117,18 +130,12 @@ fn sort_iterator<T: Ord, I: Iterator<Item = T>>(i: I) -> Vec<T> {
     v
 }
 
-fn sort_iterable<T: Ord, I: IntoIterator<Item = T>>(i: I) -> Vec<T> {
-    let mut v: Vec<_> = i.into_iter().collect::<Vec<_>>();
-    v.sort();
-    v
-}
-
 arbitrary_stateful_operations! {
-    model = ModelBTreeMap<K, V>,
-    tested = BTreeMap<K, V>,
+    model = ModelHashMap<K, V>,
+    tested = HashMap<K, V, BuildAHasher>,
 
     type_parameters = <
-        K: Clone + Debug + Eq + Ord,
+        K: Clone + Debug + Eq + Hash + Ord,
         V: Clone + Debug + Eq + Ord
     >,
 
@@ -140,40 +147,55 @@ arbitrary_stateful_operations! {
             fn get_key_value(&self, k: &K) -> Option<(&K, &V)>;
             fn get_mut(&mut self, k: &K) -> Option<&mut V>;
             fn insert(&mut self, k: K, v: V) -> Option<V>;
-            fn is_empty(&self) -> bool;
-            fn len(&self) -> usize;
             fn remove(&mut self, k: &K) -> Option<V>;
+            //fn shrink_to(&mut self, min_capacity: usize);
+            fn shrink_to_fit(&mut self);
         }
 
         equal_with(sort_iterator) {
+            fn drain(&mut self) -> impl Iterator<Item = (K, V)>;
             fn iter(&self) -> impl Iterator<Item = (&K, &V)>;
             fn iter_mut(&self) -> impl Iterator<Item = (&K, &mut V)>;
             fn keys(&self) -> impl Iterator<Item = &K>;
-            fn range(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)>;
-            fn range_mut(&self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)>;
             fn values(&self) -> impl Iterator<Item = &V>;
             fn values_mut(&mut self) -> impl Iterator<Item = &mut V>;
         }
+    }
 
-        equal_with(sort_iterable) {
-            fn split_off(&mut self, k: &K) -> impl IntoIterator<Item = (&K, &V)>;
+    pre {
+        let prev_capacity = tested.capacity();
+    }
+
+    post {
+        // A bit of a hack.
+        if self == Self::clear {
+            assert_eq!(tested.capacity(), prev_capacity,
+                "capacity: {}, previous: {}",
+                tested.capacity(), prev_capacity);
         }
+
+        assert!(tested.capacity() >= model.len());
+        assert_eq!(tested.is_empty(), model.is_empty());
+        assert_eq!(tested.len(), model.len());
     }
 }
 
-const MAX_RING_SIZE: usize = 65_536;
+fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
+    use arbitrary::{Arbitrary, Unstructured};
 
-fn fuzz_cycle(data: &[u8]) -> Result<(), ()> {
-    use arbitrary::{Arbitrary, FiniteBuffer};
+    let mut ring = Unstructured::new(&data);
 
-    let mut ring = FiniteBuffer::new(&data, MAX_RING_SIZE).map_err(|_| ())?;
-    let mut model = ModelBTreeMap::<u16, u16>::new();
-    let mut tested = BTreeMap::<u16, u16>::new();
+    let capacity: usize = Arbitrary::arbitrary(&mut ring)?;
+    let hash_seed: u128 = Arbitrary::arbitrary(&mut ring)?;
+    
+    let mut model = ModelHashMap::<u16, u16>::default();
+    let mut tested: HashMap<u16, u16, BuildAHasher> =
+        HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
         #[cfg(fuzzing_debug)]
-        _op_trace.push_str(format!("{}\n", op.to_string()));
+        _op_trace.push_str(&format!("{}\n", op.to_string()));
         op.execute_and_compare(&mut model, &mut tested);
     }
 

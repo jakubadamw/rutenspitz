@@ -16,7 +16,7 @@ This crate was inspired by the following works:
 
 ## Example
 
-See the [`HashMap` test](examples/src/hash_map.rs) for reference.
+See the [`HashMap` test](../examples/src/hash_map.rs) for reference.
 
 You can run it with `cargo hfuzz`. First of all you'll need to install `honggfuzz` along with its system dependencies. See [this section](https://github.com/rust-fuzz/honggfuzz-rs#dependencies) for more details. When you're done, all you need to run the test:
 
@@ -26,7 +26,7 @@ cargo hfuzz run hash_map
 
 ## Debugging
 
-The `Op` struct implements the `Display` trait by trying to produce actual Rust code equivalent of the operation (e.g. `v.insert(0, 2);` for an insert operation of a HashMap). This can be very usefully employed to produce a human-friendly operation trace to be inspected when debugging (in a proper debugger, say, lldb) an actual crash found by the fuzzer. See [these two lines](examples/src/hash_map.rs#L197-L198) for reference. Such a trace could later be used as a base for an independent unit test.
+The `Op` struct implements the `Display` trait by trying to produce actual Rust code equivalent of the operation (e.g. `v.insert(0, 2);` for an insert operation of a HashMap). This can be very usefully employed to produce a human-friendly operation trace to be inspected when debugging (in a proper debugger, say, lldb) an actual crash found by the fuzzer. See [these two lines](../examples/src/hash_map.rs#L197-L198) for reference. Such a trace could later be used as a base for an independent unit test.
 
 ## DSL
 

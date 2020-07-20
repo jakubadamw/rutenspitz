@@ -1,12 +1,7 @@
-extern crate either;
-#[macro_use]
-extern crate quote;
-extern crate proc_macro;
-extern crate syn;
-
 use either::Either;
 use proc_macro as pm;
 use proc_macro2 as pm2;
+use quote::quote;
 use syn::parse_macro_input;
 use syn::spanned::Spanned;
 
@@ -405,7 +400,7 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
 
         tokens.extend(quote! {
             #[allow(non_camel_case_types)]
-            #[derive(Arbitrary, Clone, Debug, PartialEq)]
+            #[derive(arbitrary::Arbitrary, Clone, Debug, PartialEq)]
             pub enum Op<#(#type_params_with_bounds),*> {
                 #(#variants),*
             }

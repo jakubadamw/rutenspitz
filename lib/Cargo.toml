@@ -1,0 +1,18 @@
+[package]
+name = "rutenspitz"
+description = "А procedural macro to be used for testing/fuzzing stateful models against a semantically equivalent but obviously correct implementation"
+version = "0.1.2"
+authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
+edition = "2018"
+license = "MIT"
+keywords = ["fuzzing", "test", "honggfuzz"]
+repository = "https://github.com/jakubadamw/rutenspitz"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+either = "1.5"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }
