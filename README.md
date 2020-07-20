@@ -1,8 +1,6 @@
 # rutenspitz
 
-##### NOTE
-
-This crate was previously called `arbitrary-model-tests`.
+**NOTE**: *This crate was previously called `arbitrary-model-tests`.*
 
 [![Build status](https://github.com/jakubadamw/rutenspitz/workflows/Build/badge.svg)](https://github.com/jakubadamw/rutenspitz/actions?query=workflow%3ABuild)
 [![crates.io](https://img.shields.io/crates/v/rutenspitz.svg)](https://crates.io/crates/rutenspitz)
