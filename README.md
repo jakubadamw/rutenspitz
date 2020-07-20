@@ -16,7 +16,7 @@ This crate was inspired by the following works:
 
 ## Example
 
-See the [`HashMap` test](src/tests/hash_map.rs) for reference.
+See the [`HashMap` test](examples/src/hash_map.rs) for reference.
 
 You can run it with `cargo hfuzz`. First of all you'll need to install `honggfuzz` along with its system dependencies. See [this section](https://github.com/rust-fuzz/honggfuzz-rs#dependencies) for more details. When you're done, all you need to run the test:
 
