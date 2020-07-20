@@ -26,7 +26,7 @@ cargo hfuzz run hash_map
 
 ## Debugging
 
-The `Op` struct implements the `Display` trait by trying to produce actual Rust code equivalent of the operation (e.g. `v.insert(0, 2);` for an insert operation of a HashMap). This can be very usefully employed to produce a human-friendly operation trace to be inspected when debugging (in a proper debugger, say, lldb) an actual crash found by the fuzzer. See [these two lines](examples/src/hash_map.rs#L197-L198) for reference.
+The `Op` struct implements the `Display` trait by trying to produce actual Rust code equivalent of the operation (e.g. `v.insert(0, 2);` for an insert operation of a HashMap). This can be very usefully employed to produce a human-friendly operation trace to be inspected when debugging (in a proper debugger, say, lldb) an actual crash found by the fuzzer. See [these two lines](../examples/src/hash_map.rs#L197-L198) for reference.
 
 ## DSL
 
