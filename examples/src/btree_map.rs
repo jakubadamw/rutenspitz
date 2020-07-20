@@ -1,7 +1,7 @@
 #![allow(clippy::find_map, clippy::filter_map, clippy::must_use_candidate)]
 
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;

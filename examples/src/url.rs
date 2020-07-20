@@ -1,7 +1,7 @@
 #![allow(clippy::let_unit_value)]
 
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
 use std::fmt::Debug;
 

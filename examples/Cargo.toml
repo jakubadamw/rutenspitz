@@ -1,5 +1,5 @@
 [package]
-name = "arbitrary-model-tests-examples"
+name = "rutenspitz-examples"
 version = "0.1.0"
 authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
 edition = "2018"
@@ -30,13 +30,12 @@ name = "url"
 path = "src/url.rs"
 
 [dependencies]
-arbitrary = { version = "0.4.5", features = ["derive"] }
-arbitrary-model-tests = { path = "../lib" }
-better-panic = "0.2"
-honggfuzz = "0.5"
-
 ahash = "0.3"
+arbitrary = { version = "0.4.5", features = ["derive"] }
+better-panic = "0.2"
 hashbrown = "0.8"
+honggfuzz = "0.5"
 indexmap = "1.4"
 linked-hash-map = "0.5"
+rutenspitz = { path = "../lib" }
 url = "2.1"

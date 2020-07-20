@@ -1,8 +1,8 @@
 #![allow(clippy::find_map)]
 #![allow(clippy::must_use_candidate)]
 
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
 use indexmap::IndexMap;
 

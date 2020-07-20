@@ -3,8 +3,8 @@
 #![allow(clippy::must_use_candidate)]
 #![feature(shrink_to)]
 
-use arbitrary_model_tests::arbitrary_stateful_operations;
 use honggfuzz::fuzz;
+use rutenspitz::arbitrary_stateful_operations;
 
 use hashbrown::HashMap;
 
