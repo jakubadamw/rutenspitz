@@ -1,5 +1,6 @@
 #![allow(clippy::find_map)]
 #![allow(clippy::must_use_candidate)]
+#![allow(clippy::option_if_let_else)]
 
 use honggfuzz::fuzz;
 use rutenspitz::arbitrary_stateful_operations;
