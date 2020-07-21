@@ -295,8 +295,20 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             tokens.extend(quote! {
                 #pattern => {
                     #[derive(Clone)]
+                    enum Outcome {
+                        Equal,
+                        #[cfg(not(fuzzing_debug))]
+                        Unequal,
+                        #[cfg(fuzzing_debug)]
+                        Unequal {
+                            model_ret_value_debug: String,
+                            tested_ret_value_debug: String,
+                        },
+                    }
+
+                    #[derive(Clone)]
                     enum WhichFailed {
-                        None(bool),
+                        None(Outcome),
                         First,
                         Second,
                     }
@@ -328,13 +340,34 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                             let model_ret_value = #process_model_ret_value;
                             let tested_ret_value = #process_tested_ret_value;
 
-                            guard.value = WhichFailed::None(model_ret_value == tested_ret_value);
+                            let outcome = if model_ret_value == tested_ret_value {
+                                Outcome::Equal
+                            } else {
+                                #[cfg(fuzzing_debug)]
+                                {
+                                    Outcome::Unequal {
+                                        model_ret_value_debug: format!("{:?}", model_ret_value),
+                                        tested_ret_value_debug: format!("{:?}", tested_ret_value),
+                                    }
+                                }
+                                #[cfg(not(fuzzing_debug))]
+                                Outcome::Unequal
+                            };
+                            guard.value = WhichFailed::None(outcome);
                         }));
                     }
 
                     match f {
-                        WhichFailed::None(test_passed) => {
-                            assert!(test_passed, "The return values aren't equal");
+                        WhichFailed::None(outcome) => {
+                            #[cfg(fuzzing_debug)]
+                            if let Outcome::Unequal { model_ret_value_debug, tested_ret_value_debug } = outcome {
+                                panic!("The return values aren't equal: `{}` != `{}`",
+                                    model_ret_value_debug, tested_ret_value_debug);
+                            }
+                            #[cfg(not(fuzzing_debug))]
+                            if let Outcome::Unequal = outcome {
+                                panic!("The return values aren't equal");
+                            }
                         }
                         WhichFailed::First => {
                             // First paniced, see if the second one also does
