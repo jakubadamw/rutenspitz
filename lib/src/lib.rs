@@ -325,36 +325,41 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
 
                     let mut f = WhichFailed::First;
 
-                    {
+                    /* UNSAFETY: Although there is no unsafe block, we have
+                     * the ability to reuse a possibly invalid data structure,
+                     * that has just paniced.
+                     *
+                     * SAFETY: We make sure that we know when the panic happened and we
+                     * do not touch any invalid data structure afterwards.
+                     */
+                    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                         let mut guard = GalaxyBrain {
                             value: WhichFailed::First,
                             to_update: &mut f,
                         };
 
-                        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            let model_ret_value = model.#method_name(#(#args),*);
-                            guard.value = WhichFailed::Second;
-                            let tested_ret_value = tested.#method_name(#(#args),*);
+                        let model_ret_value = model.#method_name(#(#args),*);
+                        guard.value = WhichFailed::Second;
+                        let tested_ret_value = tested.#method_name(#(#args),*);
 
-                            let model_ret_value = #process_model_ret_value;
-                            let tested_ret_value = #process_tested_ret_value;
+                        let model_ret_value = #process_model_ret_value;
+                        let tested_ret_value = #process_tested_ret_value;
 
-                            let outcome = if model_ret_value == tested_ret_value {
-                                Outcome::Equal
-                            } else {
-                                #[cfg(fuzzing_debug)]
-                                {
-                                    Outcome::Unequal {
-                                        model_ret_value_debug: format!("{:?}", model_ret_value),
-                                        tested_ret_value_debug: format!("{:?}", tested_ret_value),
-                                    }
+                        let outcome = if model_ret_value == tested_ret_value {
+                            Outcome::Equal
+                        } else {
+                            #[cfg(fuzzing_debug)]
+                            {
+                                Outcome::Unequal {
+                                    model_ret_value_debug: format!("{:?}", model_ret_value),
+                                    tested_ret_value_debug: format!("{:?}", tested_ret_value),
                                 }
-                                #[cfg(not(fuzzing_debug))]
-                                Outcome::Unequal
-                            };
-                            guard.value = WhichFailed::None(outcome);
-                        }));
-                    }
+                            }
+                            #[cfg(not(fuzzing_debug))]
+                            Outcome::Unequal
+                        };
+                        guard.value = WhichFailed::None(outcome);
+                    }));
 
                     match f {
                         WhichFailed::None(outcome) => {
