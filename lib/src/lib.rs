@@ -254,6 +254,7 @@ struct MethodTest<'s> {
 }
 
 impl<'s> quote::ToTokens for MethodTest<'s> {
+    #[allow(clippy::too_many_lines)]
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
         let args: Vec<_> = self
             .method
