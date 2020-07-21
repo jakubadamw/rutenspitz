@@ -372,10 +372,10 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                         }
                         WhichFailed::First => {
                             // First paniced, see if the second one also does
-                            let x = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                 let _ = tested.#method_name(#(#args),*);
                             }));
-                            if let Ok(_) = x {
+                            if result.is_ok() {
                                 panic!("Implementation did not panic while the model did");
                             }
                         }
