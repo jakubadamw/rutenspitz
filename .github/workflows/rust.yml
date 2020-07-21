@@ -29,7 +29,3 @@ jobs:
       run: cargo hfuzz build-debug --verbose
     - name: Run clippy
       run: cargo clippy --all-targets --all-features -- -D warnings -D clippy::pedantic
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
-    - name: Run cargo-audit
-      run: cargo audit
