@@ -63,12 +63,7 @@ impl syn::parse::Parse for Method {
                 syn::FnArg::Typed(syn::PatType { ty, pat, .. }) => {
                     let ident = match **pat {
                         syn::Pat::Ident(syn::PatIdent { ref ident, .. }) => ident.clone(),
-                        ref pat => {
-                            //error_stream.extend(
-                            //    syn::Error::new(pat.span(), "unexpected
-                            // `unsafe`").to_compile_error());
-                            syn::Ident::new("_", pat.span())
-                        }
+                        ref pat => syn::Ident::new("_", pat.span()),
                     };
                     match **ty {
                         syn::Type::Reference(syn::TypeReference {
@@ -283,23 +278,23 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             quote! { Op::#method_name { #(ref #keys),* } }
         };
 
-        let process_tested_res = self
+        let process_tested_ret_value = self
             .method
             .process_result
             .as_ref()
-            .map(|p| quote! { #p(tested_res) })
-            .unwrap_or(quote! { tested_res });
+            .map(|p| quote! { #p(tested_ret_value) })
+            .unwrap_or(quote! { tested_ret_value });
 
         if self.compare {
-            let process_model_res = self
+            let process_model_ret_value = self
                 .method
                 .process_result
                 .as_ref()
-                .map(|p| quote! { #p(model_res) })
-                .unwrap_or(quote! { model_res });
+                .map(|p| quote! { #p(model_ret_value) })
+                .unwrap_or(quote! { model_ret_value });
             tokens.extend(quote! {
                 #pattern => {
-                    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+                    #[derive(Clone)]
                     enum WhichFailed {
                         None(bool),
                         First,
@@ -313,7 +308,7 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
 
                     impl<'a> Drop for GalaxyBrain<'a> {
                         fn drop(&mut self) {
-                            *self.to_update = self.value;
+                            *self.to_update = self.value.clone();
                         }
                     }
 
@@ -326,31 +321,34 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                         };
 
                         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                            let model_res = model.#method_name(#(#args),*);
+                            let model_ret_value = model.#method_name(#(#args),*);
                             guard.value = WhichFailed::Second;
-                            let tested_res = tested.#method_name(#(#args),*);
+                            let tested_ret_value = tested.#method_name(#(#args),*);
 
-                            let model_res = #process_model_res;
-                            let tested_res = #process_tested_res;
+                            let model_ret_value = #process_model_ret_value;
+                            let tested_ret_value = #process_tested_ret_value;
 
-                            guard.value = WhichFailed::None(model_res == tested_res);
+                            guard.value = WhichFailed::None(model_ret_value == tested_ret_value);
                         }));
                     }
 
-                    if f == WhichFailed::Second {
-                        panic!("Implementation panicked while the model did not");
+                    match f {
+                        WhichFailed::None(test_passed) => {
+                            assert!(test_passed, "The return values aren't equal");
+                        }
+                        WhichFailed::First => {
+                            // First paniced, see if the second one also does
+                            let x = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                let _ = tested.#method_name(#(#args),*);
+                            }));
+                            if let Ok(_) = x {
+                                panic!("Implementation did not panic while the model did");
+                            }
+                        }
+                        WhichFailed::Second => {
+                            panic!("Implementation panicked while the model did not");
+                        }
                     }
-
-                    if let WhichFailed::None(test_passed) = f {
-                        assert!(test_passed, "The values aren't equal");
-                    }
-
-                    /* First paniced, check if second also does */
-                    let x = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        tested.#method_name(#(#args),*);
-                    }));
-
-                    assert!(matches!(x, Err(_)));
                 }
             });
         } else {
