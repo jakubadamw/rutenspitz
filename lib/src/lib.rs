@@ -295,7 +295,6 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                 .unwrap_or(quote! { model_ret_value });
             tokens.extend(quote! {
                 #pattern => {
-                    #[derive(Clone)]
                     enum Outcome {
                         Equal,
                         #[cfg(not(fuzzing_debug))]
@@ -307,7 +306,6 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
                         },
                     }
 
-                    #[derive(Clone)]
                     enum WhichFailed {
                         None(Outcome),
                         First,
