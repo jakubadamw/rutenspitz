@@ -321,7 +321,7 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
 
                     impl<'a> Drop for GalaxyBrain<'a> {
                         fn drop(&mut self) {
-                            *self.to_update = self.value.clone();
+                            std::mem::swap(self.to_update, &mut self.value);
                         }
                     }
 
