@@ -63,11 +63,7 @@ impl syn::parse::Parse for Method {
                 syn::FnArg::Typed(syn::PatType { ty, pat, .. }) => {
                     let ident = match **pat {
                         syn::Pat::Ident(syn::PatIdent { ref ident, .. }) => ident.clone(),
-                        ref pat => {
-                            //error_stream.extend(
-                            //    syn::Error::new(pat.span(), "unexpected `unsafe`").to_compile_error());
-                            syn::Ident::new("_", pat.span())
-                        }
+                        ref pat => syn::Ident::new("_", pat.span()),
                     };
                     match **ty {
                         syn::Type::Reference(syn::TypeReference {
@@ -258,6 +254,7 @@ struct MethodTest<'s> {
 }
 
 impl<'s> quote::ToTokens for MethodTest<'s> {
+    #[allow(clippy::too_many_lines)]
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
         let args: Vec<_> = self
             .method
@@ -282,27 +279,108 @@ impl<'s> quote::ToTokens for MethodTest<'s> {
             quote! { Op::#method_name { #(ref #keys),* } }
         };
 
-        let process_tested_res = self
+        let process_tested_ret_value = self
             .method
             .process_result
             .as_ref()
-            .map(|p| quote! { #p(tested_res) })
-            .unwrap_or(quote! { tested_res });
+            .map(|p| quote! { #p(tested_ret_value) })
+            .unwrap_or(quote! { tested_ret_value });
 
         if self.compare {
-            let process_model_res = self
+            let process_model_ret_value = self
                 .method
                 .process_result
                 .as_ref()
-                .map(|p| quote! { #p(model_res) })
-                .unwrap_or(quote! { model_res });
+                .map(|p| quote! { #p(model_ret_value) })
+                .unwrap_or(quote! { model_ret_value });
             tokens.extend(quote! {
                 #pattern => {
-                    let model_res = model.#method_name(#(#args),*);
-                    let tested_res = tested.#method_name(#(#args),*);
-                    let model_res = #process_model_res;
-                    let tested_res = #process_tested_res;
-                    assert_eq!(model_res, tested_res);
+                    enum Outcome {
+                        Equal,
+                        #[cfg(not(fuzzing_debug))]
+                        Unequal,
+                        #[cfg(fuzzing_debug)]
+                        Unequal {
+                            model_ret_value_debug: String,
+                            tested_ret_value_debug: String,
+                        },
+                    }
+
+                    enum WhichFailed {
+                        None(Outcome),
+                        First,
+                        Second,
+                    }
+
+                    struct GalaxyBrain<'a> {
+                        value: WhichFailed,
+                        to_update: &'a mut WhichFailed,
+                    }
+
+                    impl<'a> Drop for GalaxyBrain<'a> {
+                        fn drop(&mut self) {
+                            std::mem::swap(self.to_update, &mut self.value);
+                        }
+                    }
+
+                    let mut f = WhichFailed::First;
+
+                    {
+                        let mut guard = GalaxyBrain {
+                            value: WhichFailed::First,
+                            to_update: &mut f,
+                        };
+
+                        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            let model_ret_value = model.#method_name(#(#args),*);
+                            guard.value = WhichFailed::Second;
+                            let tested_ret_value = tested.#method_name(#(#args),*);
+
+                            let model_ret_value = #process_model_ret_value;
+                            let tested_ret_value = #process_tested_ret_value;
+
+                            let outcome = if model_ret_value == tested_ret_value {
+                                Outcome::Equal
+                            } else {
+                                #[cfg(fuzzing_debug)]
+                                {
+                                    Outcome::Unequal {
+                                        model_ret_value_debug: format!("{:?}", model_ret_value),
+                                        tested_ret_value_debug: format!("{:?}", tested_ret_value),
+                                    }
+                                }
+                                #[cfg(not(fuzzing_debug))]
+                                Outcome::Unequal
+                            };
+                            guard.value = WhichFailed::None(outcome);
+                        }));
+                    }
+
+                    match f {
+                        WhichFailed::None(outcome) => {
+                            #[cfg(fuzzing_debug)]
+                            if let Outcome::Unequal { model_ret_value_debug, tested_ret_value_debug } = outcome {
+                                panic!("The return values aren't equal: `{}` != `{}`",
+                                    model_ret_value_debug, tested_ret_value_debug);
+                            }
+                            #[cfg(not(fuzzing_debug))]
+                            if let Outcome::Unequal = outcome {
+                                panic!("The return values aren't equal");
+                            }
+                        }
+                        WhichFailed::First => {
+                            // First paniced, see if the second one also does
+                            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                let _ = tested.#method_name(#(#args),*);
+                            }));
+                            if result.is_ok() {
+                                panic!("Implementation did not panic while the model did");
+                            }
+                        }
+                        WhichFailed::Second => {
+                            panic!("Implementation panicked while the model did not");
+                        }
+                    }
                 }
             });
         } else {
