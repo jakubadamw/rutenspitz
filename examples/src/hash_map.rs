@@ -191,9 +191,9 @@ fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     let mut tested: HashMap<u16, u16, BuildAHasher> =
         HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));
 
-    let mut _op_trace = String::new();
+    let mut op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        op.append_to_trace(&mut _op_trace);
+        op.append_to_trace(&mut op_trace);
         op.execute_and_compare(&mut model, &mut tested);
     }
 
