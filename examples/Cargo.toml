@@ -1,6 +1,6 @@
 [package]
 name = "rutenspitz-examples"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -31,7 +31,7 @@ path = "src/url.rs"
 
 [dependencies]
 ahash = "0.4"
-arbitrary = { version = "0.4.5", features = ["derive"] }
+arbitrary = "0.4.5"
 better-panic = "0.2"
 hashbrown = "0.8"
 honggfuzz = "0.5"

@@ -1,5 +1,5 @@
 [package]
-name = "rutenspitz"
+name = "rutenspitz_macro"
 description = "А procedural macro to be used for testing/fuzzing stateful models against a semantically equivalent but obviously correct implementation"
 version = "0.2.1-dev"
 authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
@@ -8,8 +8,11 @@ license = "MIT"
 keywords = ["fuzzing", "test", "honggfuzz"]
 repository = "https://github.com/jakubadamw/rutenspitz"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-arbitrary = { version = "0.4.5", features = ["derive"] }
-lazy_static = "1.4"
-rutenspitz_macro = { version = "0.2.1-dev", path = "../proc_macro" }
-strum_macros = "0.18"
+either = "1.5"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["full"] }

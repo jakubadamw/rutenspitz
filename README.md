@@ -67,8 +67,7 @@ arbitrary_stateful_operations! {
     }
 
     post {
-        // A bit of a hack.
-        if &self == &Self::clear {
+        if op_name == "clear" {
             assert_eq!(tested.capacity(), prev_capacity);
         }
 

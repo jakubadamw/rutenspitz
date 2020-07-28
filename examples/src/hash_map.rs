@@ -167,8 +167,7 @@ arbitrary_stateful_operations! {
     }
 
     post {
-        // A bit of a hack.
-        if self == Self::clear {
+        if op_name == "clear" {
             assert_eq!(tested.capacity(), prev_capacity,
                 "capacity: {}, previous: {}",
                 tested.capacity(), prev_capacity);
@@ -194,8 +193,7 @@ fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
 
     let mut _op_trace = String::new();
     while let Ok(op) = <op::Op<u16, u16> as Arbitrary>::arbitrary(&mut ring) {
-        #[cfg(fuzzing_debug)]
-        _op_trace.push_str(&format!("{}\n", op.to_string()));
+        op.append_to_trace(&mut _op_trace);
         op.execute_and_compare(&mut model, &mut tested);
     }
 
