@@ -29,6 +29,10 @@ path = "src/linked_hash_map.rs"
 name = "url"
 path = "src/url.rs"
 
+[[bin]]
+name = "vec"
+path = "src/vec.rs"
+
 [dependencies]
 ahash = "0.4"
 arbitrary = "0.4.5"

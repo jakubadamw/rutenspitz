@@ -230,7 +230,7 @@ impl syn::parse::Parse for Specification {
 
 impl quote::ToTokens for Method {
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        use pm2::{Delimiter, Group, Punct, Spacing};
+        use pm2::{Delimiter, Group, Ident, Punct, Spacing, Span};
         use quote::TokenStreamExt;
 
         tokens.append(self.name.clone());
@@ -240,7 +240,14 @@ impl quote::ToTokens for Method {
             for input in &self.inputs {
                 fields.append(input.name.clone());
                 fields.append(Punct::new(':', Spacing::Joint));
-                input.ty.to_tokens(&mut fields);
+                if let syn::Type::Slice(_) = input.ty {
+                    fields.append(Ident::new("Box", Span::call_site()));
+                    fields.append(Punct::new('<', Spacing::Joint));
+                    input.ty.to_tokens(&mut fields);
+                    fields.append(Punct::new('>', Spacing::Joint));
+                } else {
+                    input.ty.to_tokens(&mut fields);
+                }
                 fields.append(Punct::new(',', Spacing::Joint));
             }
             tokens.append(Group::new(Delimiter::Brace, fields));
