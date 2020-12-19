@@ -34,12 +34,12 @@ name = "vec"
 path = "src/vec.rs"
 
 [dependencies]
-ahash = "0.4"
+ahash = "0.6"
 arbitrary = "0.4.5"
 better-panic = "0.2"
-hashbrown = "0.8"
+hashbrown = "0.9"
 honggfuzz = "0.5"
-indexmap = "1.5"
+indexmap = "1.6"
 linked-hash-map = "0.5"
 rutenspitz = { path = "../lib" }
-url = "2.1"
+url = "2.2"
