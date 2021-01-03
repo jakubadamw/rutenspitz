@@ -15,6 +15,7 @@ arbitrary_stateful_operations! {
     }
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     use arbitrary::{Arbitrary, Unstructured};
 
