@@ -33,6 +33,10 @@ path = "src/url.rs"
 name = "vec"
 path = "src/vec.rs"
 
+[[bin]]
+name = "borrow"
+path = "src/borrow.rs"
+
 [dependencies]
 ahash = "0.6"
 arbitrary = "0.4.5"

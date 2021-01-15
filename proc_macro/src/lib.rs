@@ -125,6 +125,7 @@ impl syn::parse::Parse for Method {
 struct Specification {
     model: syn::Path,
     tested: syn::Path,
+    lifetimes: Vec<syn::LifetimeDef>,
     type_params: Vec<syn::TypeParam>,
     methods: Vec<Method>,
     post: Vec<syn::Stmt>,
@@ -137,6 +138,7 @@ impl syn::parse::Parse for Specification {
 
         let mut model: Option<syn::Path> = None;
         let mut tested: Option<syn::Path> = None;
+        let mut lifetimes: Vec<syn::LifetimeDef> = vec![];
         let mut type_params: Vec<syn::TypeParam> = vec![];
         let mut methods: Vec<Method> = vec![];
         let mut post: Vec<syn::Stmt> = vec![];
@@ -156,6 +158,7 @@ impl syn::parse::Parse for Specification {
                 let _: kw::type_parameters = input.parse()?;
                 let _: Token![=] = input.parse()?;
                 let generics: syn::Generics = input.parse()?;
+                lifetimes = generics.lifetimes().cloned().collect();
                 type_params = generics.type_params().cloned().collect();
             } else if lookahead.peek(kw::methods) {
                 let outer;
@@ -220,6 +223,7 @@ impl syn::parse::Parse for Specification {
         Ok(Self {
             model,
             tested,
+            lifetimes,
             type_params,
             methods,
             post,
@@ -410,6 +414,7 @@ struct OperationEnum<'s> {
 impl<'s> quote::ToTokens for OperationEnum<'s> {
     #[allow(clippy::cognitive_complexity)]
     fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
+        let lifetimes = &self.spec.lifetimes;
         let type_params_with_bounds = &self.spec.type_params;
         let type_params: Vec<_> = type_params_with_bounds
             .iter()
@@ -489,13 +494,13 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
             }
 
             impl<#(#type_params_with_bounds),*> Op<#(#type_params),*> {
-                pub fn execute(self, tested: &mut #tested) {
+                pub fn execute <#(#lifetimes),*> (self, tested: &mut #tested) {
                     match &self {
                         #(#method_tests),*
                     }
                 }
 
-                pub fn execute_and_compare(self, model: &mut #model, tested: &mut #tested) {
+                pub fn execute_and_compare <#(#lifetimes),*> (self, model: &mut #model, tested: &mut #tested) {
                     #[cfg(not(fuzzing_debug))]
                     rutenspitz::lazy_static::initialize(&rutenspitz::NON_DEBUG_PANIC_HOOK);
 
