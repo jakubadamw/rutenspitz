@@ -1,4 +1,3 @@
-//#![allow(clippy::let_unit_value)]
 use honggfuzz::fuzz;
 use rutenspitz::arbitrary_stateful_operations;
 
