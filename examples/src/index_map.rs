@@ -1,4 +1,4 @@
-#![allow(clippy::find_map)]
+#![allow(clippy::manual_find_map)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::option_if_let_else)]
 
