@@ -38,12 +38,12 @@ name = "borrow"
 path = "src/borrow.rs"
 
 [dependencies]
-ahash = "0.6"
-arbitrary = "0.4.5"
-better-panic = "0.2"
-hashbrown = "0.9"
+ahash = "0.7"
+arbitrary = "1"
+better-panic = "0.3"
+hashbrown = "0.12"
 honggfuzz = "0.5"
-indexmap = "1.6"
+indexmap = "1"
 linked-hash-map = "0.5"
 rutenspitz = { path = "../lib" }
-url = "2.2"
+url = "2"

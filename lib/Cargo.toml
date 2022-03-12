@@ -9,7 +9,7 @@ keywords = ["fuzzing", "test", "honggfuzz"]
 repository = "https://github.com/jakubadamw/rutenspitz"
 
 [dependencies]
-arbitrary = { version = "0.4.5", features = ["derive"] }
-lazy_static = "1.4"
+arbitrary = { version = "1", features = ["derive"] }
+lazy_static = "1"
 rutenspitz_macro = { version = "0.2.1", path = "../proc_macro" }
-strum_macros = "0.20"
+strum_macros = "0.24"

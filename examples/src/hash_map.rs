@@ -3,8 +3,6 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::option_if_let_else)]
 
-#![feature(shrink_to)]
-
 use honggfuzz::fuzz;
 use rutenspitz::arbitrary_stateful_operations;
 
@@ -92,7 +90,10 @@ where
     }
 
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.data.shrink_to(std::cmp::min(self.data.capacity(), std::cmp::max(min_capacity, self.data.len())));
+        self.data.shrink_to(std::cmp::min(
+            self.data.capacity(),
+            std::cmp::max(min_capacity, self.data.len()),
+        ));
     }
 
     pub fn shrink_to_fit(&mut self) {
@@ -182,11 +183,11 @@ arbitrary_stateful_operations! {
 fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     use arbitrary::{Arbitrary, Unstructured};
 
-    let mut ring = Unstructured::new(&data);
+    let mut ring = Unstructured::new(data);
 
     let capacity: u16 = Arbitrary::arbitrary(&mut ring)?;
     let hash_seed: u128 = Arbitrary::arbitrary(&mut ring)?;
-    
+
     let mut model = ModelHashMap::<u16, u16>::default();
     let mut tested: HashMap<u16, u16, BuildAHasher> =
         HashMap::with_capacity_and_hasher(capacity as usize, BuildAHasher::new(hash_seed));

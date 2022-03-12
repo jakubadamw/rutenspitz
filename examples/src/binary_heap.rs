@@ -85,7 +85,7 @@ arbitrary_stateful_operations! {
 fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     use arbitrary::{Arbitrary, Unstructured};
 
-    let mut ring = Unstructured::new(&data);
+    let mut ring = Unstructured::new(data);
     let capacity: u8 = Arbitrary::arbitrary(&mut ring)?;
 
     let mut model = ModelBinaryHeap::<u16>::default();

@@ -1,4 +1,4 @@
-#![allow(clippy::filter_map)]
+#![allow(clippy::manual_filter_map)]
 #![allow(clippy::manual_find_map)]
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::option_if_let_else)]
@@ -165,7 +165,7 @@ arbitrary_stateful_operations! {
 fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     use arbitrary::{Arbitrary, Unstructured};
 
-    let mut ring = Unstructured::new(&data);
+    let mut ring = Unstructured::new(data);
     let mut model = ModelBTreeMap::<u16, u16>::new();
     let mut tested = BTreeMap::<u16, u16>::new();
 

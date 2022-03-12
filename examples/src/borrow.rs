@@ -26,7 +26,7 @@ arbitrary_stateful_operations! {
 fn fuzz_cycle(data: &[u8]) -> arbitrary::Result<()> {
     use arbitrary::{Arbitrary, Unstructured};
 
-    let mut ring = Unstructured::new(&data);
+    let mut ring = Unstructured::new(data);
 
     let mut vec = Vec::<u32>::new();
     let mut tested = Extender(&mut vec);
