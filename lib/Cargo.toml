@@ -11,5 +11,5 @@ repository = "https://github.com/jakubadamw/rutenspitz"
 [dependencies]
 arbitrary = { version = "1", features = ["derive"] }
 lazy_static = "1"
-rutenspitz_macro = { version = "0.2.1", path = "../proc_macro" }
+rutenspitz_macro = { version = "0.2", path = "../proc_macro" }
 strum_macros = "0.24"

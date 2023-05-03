@@ -25,7 +25,7 @@ impl BuildHasher for BuildAHasher {
     type Hasher = ahash::AHasher;
 
     fn build_hasher(&self) -> Self::Hasher {
-        ahash::AHasher::new_with_keys(self.seed >> 64, self.seed % u128::from(u64::MAX))
+        ahash::RandomState::with_seed(self.seed as usize).build_hasher()
     }
 }
 

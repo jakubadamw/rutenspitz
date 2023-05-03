@@ -12,7 +12,7 @@ repository = "https://github.com/jakubadamw/rutenspitz"
 proc-macro = true
 
 [dependencies]
-either = "1.5"
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "1.0", features = ["full"] }
+either = "1"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }

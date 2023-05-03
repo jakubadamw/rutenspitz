@@ -38,10 +38,10 @@ name = "borrow"
 path = "src/borrow.rs"
 
 [dependencies]
-ahash = "0.7"
+ahash = "0.8"
 arbitrary = "1"
 better-panic = "0.3"
-hashbrown = "0.12"
+hashbrown = "0.13"
 honggfuzz = "0.5"
 indexmap = "1"
 linked-hash-map = "0.5"

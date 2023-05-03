@@ -39,7 +39,7 @@ struct Method {
 
 impl syn::parse::Parse for Method {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let method_item: syn::TraitItemMethod = input.parse()?;
+        let method_item: syn::TraitItemFn = input.parse()?;
 
         if let Some(ref defaultness) = method_item.default {
             return Err(syn::Error::new(defaultness.span(), "unexpected `default`"));
@@ -125,7 +125,7 @@ impl syn::parse::Parse for Method {
 struct Specification {
     model: syn::Path,
     tested: syn::Path,
-    lifetimes: Vec<syn::LifetimeDef>,
+    lifetimes: Vec<syn::LifetimeParam>,
     type_params: Vec<syn::TypeParam>,
     methods: Vec<Method>,
     post: Vec<syn::Stmt>,
@@ -138,7 +138,7 @@ impl syn::parse::Parse for Specification {
 
         let mut model: Option<syn::Path> = None;
         let mut tested: Option<syn::Path> = None;
-        let mut lifetimes: Vec<syn::LifetimeDef> = vec![];
+        let mut lifetimes: Vec<syn::LifetimeParam> = vec![];
         let mut type_params: Vec<syn::TypeParam> = vec![];
         let mut methods: Vec<Method> = vec![];
         let mut post: Vec<syn::Stmt> = vec![];

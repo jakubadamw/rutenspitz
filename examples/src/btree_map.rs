@@ -86,7 +86,7 @@ where
     }
 
     pub fn range(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &V)> {
-        self.range_mut(range).map(|e| (&*e.0, &*e.1))
+        self.range_mut(range).map(|e| (e.0, &*e.1))
     }
 
     pub fn range_mut(&mut self, range: std::ops::Range<K>) -> impl Iterator<Item = (&K, &mut V)> {
