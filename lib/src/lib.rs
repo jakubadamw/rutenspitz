@@ -6,13 +6,13 @@ lazy_static::lazy_static! {
             if panic_info.payload().is::<crate::OutcomePanic>() {
                 std::process::abort();
             }
-        }))
+        }));
     };
 }
 
 #[macro_export]
 macro_rules! panic {
-    ($($arg:tt)*) => { std::panic!(rutenspitz::OutcomePanic(format!($($arg)*))) };
+    ($($arg:tt)*) => {  std::panic::panic_any(rutenspitz::OutcomePanic(format!($($arg)*))) };
 }
 
 pub struct OutcomePanic(pub String);

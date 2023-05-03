@@ -19,7 +19,7 @@ where
     T: Ord,
 {
     pub fn clear(&mut self) {
-        self.data.clear()
+        self.data.clear();
     }
 
     pub fn is_empty(&self) -> bool {
@@ -45,7 +45,7 @@ where
     }
 
     pub fn push(&mut self, item: T) {
-        self.data.push(item)
+        self.data.push(item);
     }
 
     pub fn drain(&mut self) -> impl Iterator<Item = T> + '_ {

@@ -38,7 +38,7 @@ struct Method {
 }
 
 impl syn::parse::Parse for Method {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         let method_item: syn::TraitItemFn = input.parse()?;
 
         if let Some(ref defaultness) = method_item.default {
@@ -133,7 +133,7 @@ struct Specification {
 }
 
 impl syn::parse::Parse for Specification {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
         use syn::{braced, parenthesized, Token};
 
         let mut model: Option<syn::Path> = None;
@@ -210,15 +210,8 @@ impl syn::parse::Parse for Specification {
             }
         }
 
-        let model = match model {
-            Some(model) => model,
-            None => return Err(input.error("missing `model`")),
-        };
-
-        let tested = match tested {
-            Some(tested) => tested,
-            None => return Err(input.error("missing `tested`")),
-        };
+        let model = model.ok_or_else(|| input.error("missing `model`"))?;
+        let tested = tested.ok_or_else(|| input.error("missing `tested`"))?;
 
         Ok(Self {
             model,
@@ -518,7 +511,7 @@ impl<'s> quote::ToTokens for OperationEnum<'s> {
                     trace.push_str(&format!("{}\n", self.to_string()));
                 }
             }
-        })
+        });
     }
 }
 

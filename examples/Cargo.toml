@@ -2,7 +2,7 @@
 name = "rutenspitz-examples"
 version = "0.1.2"
 authors = ["Jakub Wieczorek <jakub.adam.wieczorek@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 [[bin]]

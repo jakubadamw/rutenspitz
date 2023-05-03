@@ -22,7 +22,7 @@ where
     K: Eq + Hash,
 {
     pub fn clear(&mut self) {
-        self.data.clear()
+        self.data.clear();
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
@@ -55,6 +55,7 @@ where
         self.data.len()
     }
 
+    #[allow(clippy::missing_panics_doc)]
     pub fn remove(&mut self, k: &K) -> Option<V> {
         let pos = self.data.iter().position(|probe| probe.0 == *k);
         pos.map(|idx| {

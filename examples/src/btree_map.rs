@@ -26,7 +26,7 @@ where
     }
 
     pub fn clear(&mut self) {
-        self.data.clear()
+        self.data.clear();
     }
 
     pub fn contains_key(&self, k: &K) -> bool {
